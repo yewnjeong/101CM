@@ -35,6 +35,10 @@ namespace CM101
         public float bounceBodyLengths = 0.2f;
         public float trapReleaseTime = 2f;
 
+        [Header("Stomp (직원에게 밟힘)")]
+        public float stompStun = 1.3f;          // 납작해져 움직일 수 없는 시간
+        public float stompInvulnerable = 3f;    // 연속으로 밟히지 않는 보호 시간
+
         public OrbitCamera cam;
 
         public Rigidbody Body { get; private set; }
@@ -58,6 +62,20 @@ namespace CM101
         /// <summary>추종 젤리가 따라잡을 수 있는 최고 속도 계산용.</summary>
         public float RunSpeed => walkSpeed * runMultiplier;
 
+        public bool IsStunned => Time.time < stunUntil;
+        public bool CanBeStomped => Time.time >= stompSafeUntil;
+        float stunUntil = -1f;
+        float stompSafeUntil = -1f;
+
+        /// <summary>직원에게 밟힘: 실패 대신 납작해지고 잠시 움직일 수 없다. 동료 분리는 JellyChain이 처리.</summary>
+        public void OnStomped()
+        {
+            stunUntil = Time.time + stompStun;
+            stompSafeUntil = Time.time + stompInvulnerable;
+            moveVel = Vector3.zero;
+            if (Emote) Emote.PlayFlatten(stompStun + 0.15f);
+        }
+
         public bool IsRunning { get; private set; }
         public float RunGauge { get; private set; } = 1f;       // 0~1
         public float RunCooldown { get; private set; }          // 남은 쿨타임(초)
@@ -66,6 +84,9 @@ namespace CM101
 
         public FoodItem CandidateFood { get; private set; }
         public FinalJelly CandidateFinal { get; private set; }
+        /// <summary>Space로 다시 붙일 수 있는 가장 가까운 분리 동료(덩어리면 그 중 하나).</summary>
+        public JellyUnit CandidateJelly { get; private set; }
+        JellyUnit highlightedJelly;
 
         [System.NonSerialized] public Vector3? AutoMoveTarget;
         [System.NonSerialized] public Vector3 ExternalVelocity;
@@ -134,6 +155,15 @@ namespace CM101
                 shift = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
             }
 
+            if (IsStunned)
+            {
+                inputDir = Vector3.zero;
+                UpdateRun(false, Time.deltaTime);
+                ClearCandidates();
+                UpdateVisual();
+                return;
+            }
+
             UpdateRun(shift && inputDir.sqrMagnitude > 0.01f, Time.deltaTime);
             FindCandidates();
             if (kb != null && kb.spaceKey.wasPressedThisFrame) TryEat();
@@ -192,6 +222,8 @@ namespace CM101
         {
             CandidateFood = null;
             CandidateFinal = null;
+            CandidateJelly = null;
+            SetJellyHighlight(null);
             FoodItem.SetHighlighted(null);
             if (highlightedFinal) highlightedFinal.SetHighlighted(false);
             highlightedFinal = null;
@@ -225,6 +257,31 @@ namespace CM101
                 else CandidateFood = null;
             }
 
+            // 떨어진 동료: 닿기만 해서는 붙지 않고 Space로 다시 붙인다
+            CandidateJelly = null;
+            float bestU = float.MaxValue;
+            float urange = Radius + bodySize * eatRangeBodyLengths + 0.3f;
+            int m = Physics.OverlapSphereNonAlloc(c, urange + 0.3f, buf, 1 << Layers.Jelly, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < m; i++)
+            {
+                var u = buf[i].GetComponent<JellyUnit>();
+                if (!u || u.State != JellyState.Detached || Time.time < u.RecoverableAt) continue;
+                Vector3 p = u.Body.position;
+                float d = Vector3.Distance(c, p) - u.Radius;
+                if (d > urange - 0.1f || d >= bestU) continue;
+                if (Physics.Linecast(c, p, Layers.EnvMask, QueryTriggerInteraction.Ignore)) continue;
+                bestU = d;
+                CandidateJelly = u;
+            }
+            if (CandidateJelly)
+            {
+                // 음식과 겹치면 더 가까운 쪽 하나만
+                float other = Mathf.Min(CandidateFood ? bestF : float.MaxValue, CandidateFinal ? bestJ : float.MaxValue);
+                if (other < bestU) CandidateJelly = null;
+                else { CandidateFood = null; CandidateFinal = null; }
+            }
+            SetJellyHighlight(CandidateJelly);
+
             FoodItem.SetHighlighted(CandidateFood);
             if (highlightedFinal != CandidateFinal)
             {
@@ -234,8 +291,31 @@ namespace CM101
             }
         }
 
+        void SetJellyHighlight(JellyUnit u)
+        {
+            if (highlightedJelly == u) return;
+            SetGroupHighlight(highlightedJelly, false);
+            highlightedJelly = u;
+            SetGroupHighlight(u, true);
+        }
+
+        static void SetGroupHighlight(JellyUnit u, bool on)
+        {
+            if (!u) return;
+            if (u.Chunk != null) { foreach (var m in u.Chunk.Members) if (m) m.SetHighlighted(on); }
+            else u.SetHighlighted(on);
+        }
+
         void TryEat()
         {
+            if (CandidateJelly)
+            {
+                var u = CandidateJelly;
+                SetJellyHighlight(null);
+                JellyChain.I.TryRecover(u);
+                CandidateJelly = null;
+                return;
+            }
             if (CandidateFinal)
             {
                 GameManager.I.TryEatFinal(CandidateFinal);
@@ -273,7 +353,7 @@ namespace CM101
                 desired = to.magnitude > 0.2f ? to.normalized * walkSpeed : Vector3.zero;
                 if (desired.sqrMagnitude > 0.01f) lastDir = desired.normalized;
             }
-            else if (GameManager.IsPlaying)
+            else if (GameManager.IsPlaying && !IsStunned)
             {
                 desired = inputDir * (IsRunning ? CurrentRunSpeed : CurrentWalkSpeed);
             }
@@ -344,16 +424,7 @@ namespace CM101
                 trapTimer = Mathf.Max(0f, trapTimer - dt);
             }
 
-            // 분리 젤리 회수: 선두가 닿으면
-            if (GameManager.IsPlaying && JellyChain.I)
-            {
-                int n = Physics.OverlapSphereNonAlloc(Body.position, Radius + 0.12f, buf, 1 << Layers.Jelly, QueryTriggerInteraction.Ignore);
-                for (int i = 0; i < n; i++)
-                {
-                    var u = buf[i].GetComponent<JellyUnit>();
-                    if (u && u.State == JellyState.Detached) JellyChain.I.TryRecover(u);
-                }
-            }
+            // 분리 젤리 회수는 닿는 것만으로 일어나지 않는다: 가까이서 Space (TryEat → CandidateJelly)
 
             // 물리 오류 복구
             if (Body.position.y < -4f)

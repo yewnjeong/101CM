@@ -70,10 +70,25 @@ namespace CM101
             ready = true;
         }
 
-        public void Play(EmoteType e, float delay = 0f)
+        float flatT = -1f;
+        float flatDur = 1.4f;
+        public bool IsFlat => flatT >= 0f;
+
+        /// <summary>직원에게 밟혔을 때 납작해지는 모션.</summary>
+        public void PlayFlatten(float duration = 1.4f)
         {
             Setup();
             if (!ready) return;
+            flatT = 0f;
+            flatDur = Mathf.Max(0.6f, duration);
+            Current = EmoteType.None;
+            queued = EmoteType.None;
+        }
+
+        public void Play(EmoteType e, float delay = 0f)
+        {
+            Setup();
+            if (!ready || IsFlat) return;
             if (delay <= 0f) { Current = e; t = 0f; queued = EmoteType.None; }
             else { queued = e; queueDelay = delay; }
         }
@@ -100,62 +115,87 @@ namespace CM101
                 queueDelay -= dt;
                 if (queueDelay <= 0f) { Current = queued; queued = EmoteType.None; t = 0f; }
             }
-            if (Current == EmoteType.None) return;
+            bool flat = flatT >= 0f;
+            if (flat) Current = EmoteType.None; // 납작한 동안은 기분 표현을 하지 않는다
+            if (Current == EmoteType.None && !flat) return;
 
-            t += dt;
-            float d = Duration(Current);
-            float k = Mathf.Clamp01(t / d);
             float s = size;
-
             baseRot = visual.rotation;
             applied = true;
-
-            // 팔을 드는 정도: 앞 0.2초 올리고 뒤 0.2초 내린다
-            float raise = Mathf.Clamp01(t / 0.2f) * Mathf.Clamp01((d - t) / 0.2f);
-            Vector3 upR = new Vector3(0.36f, 0.42f, 0.06f) * s;
-            Vector3 upL = new Vector3(-0.36f, 0.42f, 0.06f) * s;
             Quaternion offset = Quaternion.identity;
             float hop = 0f;
 
-            switch (Current)
+            if (Current != EmoteType.None)
             {
-                case EmoteType.Wave:
-                    if (armR)
+                t += dt;
+                float d = Duration(Current);
+                float k = Mathf.Clamp01(t / d);
+
+                // 팔을 드는 정도: 앞 0.2초 올리고 뒤 0.2초 내린다
+                float raise = Mathf.Clamp01(t / 0.2f) * Mathf.Clamp01((d - t) / 0.2f);
+                Vector3 upR = new Vector3(0.36f, 0.42f, 0.06f) * s;
+                Vector3 upL = new Vector3(-0.36f, 0.42f, 0.06f) * s;
+
+                switch (Current)
+                {
+                    case EmoteType.Wave:
+                        if (armR)
+                        {
+                            armR.localPosition = Vector3.Lerp(armRRest, upR, raise);
+                            armR.localRotation = armRRestRot * Quaternion.Euler(0f, 0f, raise * (25f + Mathf.Sin(t * 14f) * 30f));
+                        }
+                        offset = Quaternion.Euler(0f, 0f, -7f * raise);
+                        break;
+
+                    case EmoteType.Spin:
                     {
-                        armR.localPosition = Vector3.Lerp(armRRest, upR, raise);
-                        armR.localRotation = armRRestRot * Quaternion.Euler(0f, 0f, raise * (25f + Mathf.Sin(t * 14f) * 30f));
+                        float ang = Mathf.SmoothStep(0f, 720f, k);
+                        offset = Quaternion.Euler(0f, ang, 0f);
+                        hop = Mathf.Sin(k * Mathf.PI) * 0.22f * s;
+                        if (armR) armR.localPosition = Vector3.Lerp(armRRest, upR, raise);
+                        if (armL) armL.localPosition = Vector3.Lerp(armLRest, upL, raise);
+                        break;
                     }
-                    offset = Quaternion.Euler(0f, 0f, -7f * raise);
-                    break;
 
-                case EmoteType.Spin:
-                {
-                    float ang = Mathf.SmoothStep(0f, 720f, k);
-                    offset = Quaternion.Euler(0f, ang, 0f);
-                    hop = Mathf.Sin(k * Mathf.PI) * 0.22f * s;
-                    if (armR) armR.localPosition = Vector3.Lerp(armRRest, upR, raise);
-                    if (armL) armL.localPosition = Vector3.Lerp(armLRest, upL, raise);
-                    break;
-                }
+                    case EmoteType.Hop:
+                    {
+                        float ph = k * Mathf.PI * 3f;
+                        hop = Mathf.Abs(Mathf.Sin(ph)) * 0.35f * s;
+                        float arms = Mathf.Abs(Mathf.Sin(ph)) * raise;
+                        if (armR) armR.localPosition = Vector3.Lerp(armRRest, upR, arms * 0.7f);
+                        if (armL) armL.localPosition = Vector3.Lerp(armLRest, upL, arms * 0.7f);
+                        break;
+                    }
 
-                case EmoteType.Hop:
-                {
-                    float ph = k * Mathf.PI * 3f;
-                    hop = Mathf.Abs(Mathf.Sin(ph)) * 0.35f * s;
-                    float arms = Mathf.Abs(Mathf.Sin(ph)) * raise;
-                    if (armR) armR.localPosition = Vector3.Lerp(armRRest, upR, arms * 0.7f);
-                    if (armL) armL.localPosition = Vector3.Lerp(armLRest, upL, arms * 0.7f);
-                    break;
+                    case EmoteType.Bow:
+                    {
+                        float bow = Mathf.Clamp01(Mathf.Sin(k * Mathf.PI) * 1.4f);
+                        offset = Quaternion.Euler(38f * bow, 0f, 0f);
+                        hop = -0.05f * s * bow;
+                        break;
+                    }
                 }
+                if (t >= d) Current = EmoteType.None;
+            }
 
-                case EmoteType.Bow:
+            if (flat)
+            {
+                // 밟힘: 순간 납작 → 납작한 채 부들부들 → 마지막에 뾰잉 하고 원래대로
+                flatT += dt;
+                const float squashIn = 0.06f, recover = 0.45f, flatY = 0.18f;
+                float sy;
+                if (flatT < squashIn) sy = Mathf.Lerp(1f, flatY, flatT / squashIn);
+                else if (flatT < flatDur - recover) sy = flatY + Mathf.Sin(flatT * 20f) * 0.02f;
+                else
                 {
-                    float bow = Mathf.Sin(k * Mathf.PI);
-                    bow = Mathf.Clamp01(bow * 1.4f);
-                    offset = Quaternion.Euler(38f * bow, 0f, 0f);
-                    hop = -0.05f * s * bow;
-                    break;
+                    float r = Mathf.Clamp01((flatT - (flatDur - recover)) / recover);
+                    sy = Mathf.Lerp(flatY, 1f, r) + Mathf.Sin(r * Mathf.PI * 2.5f) * (1f - r) * 0.35f;
                 }
+                sy = Mathf.Max(0.12f, sy);
+                float sxz = 1f + Mathf.Clamp01(1f - sy) * 0.75f;
+                visual.localScale = Vector3.Scale(visual.localScale, new Vector3(sxz, sy, sxz));
+                hop += -0.5f * s * (1f - sy); // 발바닥이 바닥에 붙어 있게
+                if (flatT >= flatDur) flatT = -1f;
             }
 
             visual.rotation = baseRot * offset;
@@ -166,8 +206,6 @@ namespace CM101
                 ring.rotation = Quaternion.Euler(0f, baseRot.eulerAngles.y, 0f);
                 ring.position = transform.position + Vector3.down * (0.49f * s);
             }
-
-            if (t >= d) Current = EmoteType.None;
         }
     }
 }

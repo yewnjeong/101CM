@@ -44,6 +44,8 @@ namespace CM101
 
         [System.NonSerialized] public Vector3 Home;
         [System.NonSerialized] public float PullUntil;
+        /// <summary>이 시각 전에는 회수할 수 없다(밟혀서 흩어진 직후 바로 다시 붙는 것 방지).</summary>
+        [System.NonSerialized] public float RecoverableAt;
         [System.NonSerialized] public float VacuumZoneTime;
         /// <summary>컨베이어 등 외부에서 매 물리 프레임 더해 주는 속도. DriveToward에서 소비된다.</summary>
         [System.NonSerialized] public Vector3 ExternalVelocity;
@@ -52,6 +54,9 @@ namespace CM101
         public float wanderRadius = 1.5f;      // 분리 지점에서 1~2타일
         public float wanderSpeed = 1.1f;
         public float stopNearLeaderDistance = 2.2f;
+
+        bool highlighted;
+        public void SetHighlighted(bool on) { highlighted = on; }
 
         Vector3 nudgeVel;
         Vector3 wanderTarget;
@@ -110,6 +115,7 @@ namespace CM101
 
         public void SetConnected()
         {
+            highlighted = false;
             State = JellyState.Connected;
             Chunk = null;
             PullUntil = 0f;
@@ -212,6 +218,7 @@ namespace CM101
                 return;
             }
 
+            if (Emote && Emote.IsFlat) { DriveToward(Body.position, 0f, 1f); return; } // 납작해진 동안은 제자리
             if (Chunk != null) ChunkBehaviour();
             else WanderBehaviour();
         }
@@ -320,6 +327,7 @@ namespace CM101
             {
                 beacon.localPosition = Vector3.up * (Size * 1.0f + 0.1f + Mathf.Sin(Time.time * 4f + Id) * 0.06f);
                 float bs = 0.11f + Mathf.PingPong(Time.time * 0.12f, 0.04f);
+                if (highlighted) bs = 0.2f + Mathf.Sin(Time.time * 10f) * 0.03f; // Space로 붙일 수 있는 대상
                 beacon.localScale = Vector3.one * bs;
             }
         }

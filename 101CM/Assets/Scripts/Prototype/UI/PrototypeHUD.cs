@@ -203,7 +203,17 @@ namespace CM101
             string text = null;
             Color c = Color.white;
             Vector3 world = Vector3.zero;
-            if (ld.CandidateFood)
+            if (ld.CandidateJelly)
+            {
+                var u = ld.CandidateJelly;
+                world = u.transform.position + Vector3.up * 0.6f;
+                int n = u.Chunk != null ? u.Chunk.Members.Count : 1;
+                int len = u.Chunk != null ? u.Chunk.TotalLength : u.StoredLength;
+                int free = JellyChain.Goal - gm.chain.CurrentLength;
+                if (len > free) { text = $"{len}cm 공간이 필요해요"; c = CWarn; }
+                else { text = n > 1 ? $"[Space] 동료 {n}마리 다시 붙이기 +{len}cm" : $"[Space] 동료 다시 붙이기 +{len}cm"; c = CGood; }
+            }
+            else if (ld.CandidateFood)
             {
                 var f = ld.CandidateFood;
                 world = f.transform.position + Vector3.up * 0.55f;
@@ -308,7 +318,7 @@ namespace CM101
         void DrawControls()
         {
             Label(new Rect(24, H - 44, 1200, 30),
-                "WASD 이동 · Shift 달리기(쿨타임) · 마우스 시점 · Space 먹기 · 1 손 흔들기 · 2 빙글빙글 · 3 폴짝 · 4 인사 · Esc 일시정지",
+                "WASD 이동 · Shift 달리기(쿨타임) · 마우스 시점 · Space 먹기/동료 붙이기 · 1 손 흔들기 · 2 빙글빙글 · 3 폴짝 · 4 인사 · Esc 일시정지",
                 sSmall, new Color(1, 1, 1, 0.75f));
         }
 

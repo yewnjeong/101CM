@@ -45,6 +45,8 @@ namespace CM101
         readonly List<PendingHit> pending = new List<PendingHit>();
         bool pendingVacuum;
         Vector3 pendingVacuumSource;
+        bool pendingLeaderStomp;
+        Vector3 pendingStompSource;
         float protectedUntil;
         float lastSpaceMsgTime = -10f;
 
@@ -222,6 +224,13 @@ namespace CM101
             pending.Add(new PendingHit { unit = u, type = type, source = source });
         }
 
+        /// <summary>선두가 밟힘 → 선두 뒤 연결 전체가 흩어진다.</summary>
+        public void ReportLeaderStomp(Vector3 source)
+        {
+            pendingLeaderStomp = true;
+            pendingStompSource = source;
+        }
+
         public void ReportVacuum(Vector3 source)
         {
             pendingVacuum = true;
@@ -230,18 +239,23 @@ namespace CM101
 
         void Update()
         {
-            if (pending.Count == 0 && !pendingVacuum) return;
+            if (pending.Count == 0 && !pendingVacuum && !pendingLeaderStomp) return;
 
             if (!GameManager.IsPlaying || IsProtected || Connected.Count == 0)
             {
                 pending.Clear();
                 pendingVacuum = false;
+                pendingLeaderStomp = false;
                 return;
             }
 
             if (pendingVacuum)
             {
                 DetachAllVacuum(pendingVacuumSource);
+            }
+            else if (pendingLeaderStomp)
+            {
+                ScatterFrom(0, pendingStompSource, true);
             }
             else
             {
@@ -265,6 +279,7 @@ namespace CM101
 
             pending.Clear();
             pendingVacuum = false;
+            pendingLeaderStomp = false;
             protectedUntil = Time.time + lossProtection;
         }
 
@@ -287,7 +302,7 @@ namespace CM101
             GameManager.Notify($"상품에 맞아 동료 {chunk.Members.Count}마리({chunk.TotalLength}cm)가 덩어리로 떨어졌어요", MsgKind.Warn, 3f);
         }
 
-        void ScatterFrom(int index, Vector3 source)
+        void ScatterFrom(int index, Vector3 source, bool leaderStomped = false)
         {
             int n = 0, len = 0;
             for (int i = index; i < Connected.Count; i++)
@@ -301,14 +316,23 @@ namespace CM101
                 dir.y = 0f;
                 dir.Normalize();
                 u.SetDetached(null, u.Body.position + dir * 0.8f);
-                u.Kick(dir * Random.Range(2.5f, 3.5f) + Vector3.up * 2.5f);
+                bool flat = u.Emote && u.Emote.IsFlat; // 발밑에서 납작해진 젤리는 거의 튀지 않는다
+                if (leaderStomped)
+                {
+                    u.RecoverableAt = Time.time + (leader ? leader.stompStun : 1.3f) + 0.8f;
+                    if (u.Emote && !flat) u.Emote.PlayFlatten(0.9f + i * 0.04f); // 선두가 밟히면 모두 납작
+                    flat = false; // 선두가 밟힌 경우엔 모두 사방으로 튕겨 나간다
+                }
+                u.Kick(flat ? dir * 0.6f : dir * Random.Range(2.5f, 3.5f) + Vector3.up * 2.5f);
                 Detached.Add(u);
                 n++;
                 len += u.StoredLength;
             }
             Connected.RemoveRange(index, Connected.Count - index);
             GameManager.RecordLoss(n);
-            GameManager.Notify($"직원에게 밟혀 동료 {n}마리({len}cm)가 흩어졌어요", MsgKind.Warn, 3f);
+            GameManager.Notify(leaderStomped
+                ? $"납작! 밟혀서 동료 {n}마리({len}cm)가 모두 흩어졌어요"
+                : $"직원에게 밟혀 동료 {n}마리({len}cm)가 흩어졌어요", MsgKind.Warn, 3f);
         }
 
         void DetachAllVacuum(Vector3 source)
@@ -360,6 +384,7 @@ namespace CM101
             var group = u.Chunk != null ? new List<JellyUnit>(u.Chunk.Members) : new List<JellyUnit> { u };
             group.RemoveAll(x => !x || x.State != JellyState.Detached);
             if (group.Count == 0) return false;
+            foreach (var g in group) if (Time.time < g.RecoverableAt) return false;
 
             int len = 0;
             foreach (var g in group) len += g.StoredLength;

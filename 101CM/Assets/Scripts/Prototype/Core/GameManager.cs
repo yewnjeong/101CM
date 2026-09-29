@@ -259,7 +259,17 @@ namespace CM101
             Cursor.visible = !locked;
         }
 
-        public static void RecordLoss(int n) { if (I) I.LostCount += n; }
+        bool recoverTipShown;
+        public static void RecordLoss(int n)
+        {
+            if (!I) return;
+            I.LostCount += n;
+            if (!I.recoverTipShown)
+            {
+                I.recoverTipShown = true;
+                Notify("떨어진 동료 가까이 가서 Space를 누르면 다시 붙어요", MsgKind.Info, 5f);
+            }
+        }
         public static void RecordAbsorbed(int n) { if (I) I.AbsorbedCount += n; }
         public static void RecordRecovered(int n) { if (I) I.RecoveredCount += n; }
 
