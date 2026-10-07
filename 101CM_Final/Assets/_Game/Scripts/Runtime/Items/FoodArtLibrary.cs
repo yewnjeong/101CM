@@ -1,0 +1,29 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace CM101
+{
+    /// <summary>음식 모양 20종 ↔ 바닥 음식 프리팹 · 동료 젤리 프리팹(머리 위 음식 포함). Resources/FoodArtLibrary.asset</summary>
+    [CreateAssetMenu(menuName = "101CM/Food Art Library")]
+    public class FoodArtLibrary : ScriptableObject
+    {
+        [System.Serializable]
+        public class Entry
+        {
+            public FoodKind kind;
+            public GameObject floorPrefab;
+            public GameObject followerPrefab;
+        }
+
+        public List<Entry> entries = new List<Entry>();
+
+        [Tooltip("플레이어 레인보우 젤리(리깅). 마지막 1cm 젤리 모양으로도 쓴다")]
+        public GameObject playerPrefab;
+
+        public Entry Get(FoodKind k)
+        {
+            foreach (var e in entries) if (e != null && e.kind == k) return e;
+            return null;
+        }
+    }
+}

@@ -1,0 +1,1195 @@
+using System.Collections.Generic;
+using System.Linq;
+using CM101.Level;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace CM101.EditorTools
+{
+    /// <summary>
+    /// 본게임 씬 생성기 v3. 메뉴: 101CM > Level > Build Main Level
+    /// 1층 매장 34×41 (v2 48×58에서 면적 절반), 7구역 ㄹ자 동선:
+    ///   Z0 창고(튜토리얼) → Z1 과일·야채 → Z2 과자 → Z3 음료·유제품 → Z4 아이스크림 → Z5 카운터 → Z6 출구(골 홀)
+    /// 높이: 바닥 0 · 낮은 단 0.5 · 매대/냉동고/계산대 1.0 (점프 한 번) · 높은 진열 2.0 (점프 두 번).
+    /// 게임플레이(선두·젤리 체인·음식·HUD)와 위험은 모두 실제로 동작한다. 다시 실행하면 씬을 덮어쓴다.
+    /// </summary>
+    public static class LevelBuilder
+    {
+        public const string ScenePath = "Assets/_Game/Scenes/Level_Main.unity";
+        const string MatDir = "Assets/_Game/Materials";
+        const string GenDir = "Assets/_Game/Materials/Generated";
+        const string ResDir = "Assets/Resources/CM101";
+
+        public const float MapW = 34f, MapD = 41f;
+        const float OuterX = MapW + 5.5f; // 출구 문 밖 전실 포함
+        // 외벽·천장 16: 카메라(최대 약 10 높이)가 매장 밖 빈 화면을 보지 않게 막는다.
+        // 창고 문에서 출구 빛기둥이 칸막이 벽(4.5) 위로 보이려면 기둥 끝이 14.2 이상이어야 해서 천장을 16으로 둔다.
+        const float OuterH = 16f, DividerH = 4.5f, CeilingY = 16f;
+        public const float T1 = 1.0f, T2 = 2.0f; // 점프(몸 중심 1.15 상승)로 한 번에 한 단
+        public static readonly Vector3 BeaconTop = new Vector3(33.1f, 15.5f, 34f); // 골 홀 안, 출구 문 앞 (충돌 없음)
+        public static readonly Vector3 WarehouseDoorEye = new Vector3(10.6f, 1.6f, 6.5f);
+
+        struct ZoneDef
+        {
+            public ZoneId id; public string name, sign; public float x0, x1, z0, z1, minutes; public int food, entry, exit; public Color color;
+        }
+
+        static readonly ZoneDef[] Zones =
+        {
+            new ZoneDef { id = ZoneId.Z0, name = "창고 (튜토리얼)", sign = "WAREHOUSE", x0 = 0, x1 = 10, z0 = 0, z1 = 13, minutes = 5, food = 16, entry = 10, exit = 10, color = new Color(0.75f, 0.6f, 0.45f) },
+            new ZoneDef { id = ZoneId.Z1, name = "과일·야채", sign = "FRESH", x0 = 10, x1 = 34, z0 = 0, z1 = 13, minutes = 10, food = 16, entry = 10, exit = 26, color = new Color(0.45f, 0.8f, 0.35f) },
+            new ZoneDef { id = ZoneId.Z2, name = "과자 코너", sign = "SNACKS", x0 = 17, x1 = 34, z0 = 13, z1 = 27, minutes = 11, food = 20, entry = 26, exit = 46, color = new Color(0.95f, 0.55f, 0.35f) },
+            new ZoneDef { id = ZoneId.Z3, name = "음료·유제품", sign = "DRINKS", x0 = 0, x1 = 17, z0 = 13, z1 = 27, minutes = 13, food = 20, entry = 46, exit = 66, color = new Color(0.4f, 0.65f, 1f) },
+            new ZoneDef { id = ZoneId.Z4, name = "아이스크림", sign = "ICE CREAM", x0 = 0, x1 = 14, z0 = 27, z1 = 41, minutes = 11, food = 19, entry = 66, exit = 85, color = new Color(0.55f, 0.9f, 0.95f) },
+            new ZoneDef { id = ZoneId.Z5, name = "카운터", sign = "CHECKOUT", x0 = 14, x1 = 28, z0 = 27, z1 = 41, minutes = 10, food = 15, entry = 85, exit = 100, color = new Color(0.98f, 0.8f, 0.3f) },
+            new ZoneDef { id = ZoneId.Z6, name = "출구 (골)", sign = "EXIT", x0 = 28, x1 = 34, z0 = 27, z1 = 41, minutes = 1, food = 0, entry = 100, exit = 101, color = new Color(1f, 0.55f, 0.8f) },
+        };
+
+        static readonly Color CWall = new Color(0.8f, 0.9f, 0.87f);
+        static readonly Color CShelf = new Color(0.62f, 0.7f, 0.8f);
+        static readonly Color CCrate = new Color(0.75f, 0.58f, 0.38f);
+        static readonly Color CCrateDark = new Color(0.62f, 0.46f, 0.3f);
+        static readonly Color CPallet = new Color(0.82f, 0.68f, 0.45f);
+        static readonly Color CFridge = new Color(0.86f, 0.93f, 1f);
+        static readonly Color CFreezer = new Color(0.88f, 0.95f, 1f);
+        static readonly Color CCounter = new Color(0.6f, 0.42f, 0.28f);
+        static readonly Color CMetal = new Color(0.72f, 0.75f, 0.8f);
+        static readonly Color CBasket = new Color(0.25f, 0.6f, 0.95f);
+        static readonly Color CHide = new Color(0.35f, 0.5f, 0.85f);
+        static readonly Color CSign = new Color(0.3f, 0.4f, 0.45f);
+        static readonly Color CTier1 = new Color(0.93f, 0.78f, 0.55f);
+        static readonly Color CTier2 = new Color(0.98f, 0.66f, 0.5f);
+        static readonly Color CStaff = new Color(0.95f, 0.25f, 0.3f);
+
+        static Transform world, zoneGeo, zoneMarks, labels;
+        static ZoneId curZone;
+        static Material textMat;
+        static PointMarker startPoint, finalPoint, exitPoint;
+        static GameObject tutorialGate, exitDoor;
+        static int foodVariant;
+
+        [MenuItem("101CM/Level/Build Main Level")]
+        public static void BuildMenu() => Build();
+
+        public static string Build()
+        {
+            EnsureFolder(MatDir);
+            EnsureFolder(ResDir);
+            EnsureFolder("Assets/_Game/Scenes");
+            if (AssetDatabase.LoadAssetAtPath<Material>(ResDir + "/ProtoLit.mat") == null)
+                AssetDatabase.CreateAsset(new Material(Shader.Find("Universal Render Pipeline/Lit")), ResDir + "/ProtoLit.mat");
+            if (AssetDatabase.IsValidFolder(GenDir)) AssetDatabase.DeleteAsset(GenDir);
+            EnsureFolder(GenDir);
+            textMat = null;
+            foodVariant = 0;
+            ProtoFactory.ClearCache();
+            ProtoFactory.PersistHook = m =>
+            {
+                AssetDatabase.CreateAsset(m, AssetDatabase.GenerateUniqueAssetPath($"{GenDir}/{m.name}.mat"));
+                return m;
+            };
+            Physics.IgnoreLayerCollision(Layers.Jelly, Layers.Lead, true);
+            try
+            {
+                var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                Random.InitState(101);
+                BuildWorld();
+                EditorSceneManager.SaveScene(scene, ScenePath);
+                AddToBuildSettings(ScenePath);
+            }
+            finally
+            {
+                ProtoFactory.PersistHook = null;
+                ProtoFactory.ClearCache();
+                AssetDatabase.SaveAssets();
+            }
+            string msg = $"[101CM] 본게임 씬 생성: {ScenePath}";
+            Debug.Log(msg);
+            return msg;
+        }
+
+        // ================================================================== 헬퍼
+
+        static void EnsureFolder(string path)
+        {
+            if (AssetDatabase.IsValidFolder(path)) return;
+            string parent = System.IO.Path.GetDirectoryName(path).Replace('\\', '/');
+            if (!AssetDatabase.IsValidFolder(parent)) EnsureFolder(parent);
+            AssetDatabase.CreateFolder(parent, System.IO.Path.GetFileName(path));
+        }
+
+        static void AddToBuildSettings(string path)
+        {
+            var list = EditorBuildSettings.scenes.ToList();
+            list.RemoveAll(s => s.path == path);
+            list.Insert(0, new EditorBuildSettingsScene(path, true));
+            EditorBuildSettings.scenes = list.ToArray();
+        }
+
+        static Material Mat(Color c, float smooth = 0.25f, float emission = 0f) => ProtoFactory.Mat(c, smooth, emission);
+
+        static Material CheckerMat()
+        {
+            string tp = MatDir + "/T_Checker.asset";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(tp);
+            if (!tex)
+            {
+                tex = new Texture2D(2, 2, TextureFormat.RGBA32, true) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat, name = "T_Checker" };
+                Color a = new Color(0.96f, 0.96f, 0.94f), b = new Color(0.74f, 0.77f, 0.82f);
+                tex.SetPixels(new[] { a, b, b, a });
+                tex.Apply();
+                AssetDatabase.CreateAsset(tex, tp);
+            }
+            var m = new Material(AssetDatabase.LoadAssetAtPath<Material>(ResDir + "/ProtoLit.mat")) { name = "M_Floor" };
+            m.SetTexture("_BaseMap", tex);
+            m.SetTextureScale("_BaseMap", new Vector2(OuterX * 0.5f, MapD * 0.5f)); // 1u 체크 타일
+            m.SetColor("_BaseColor", Color.white);
+            m.SetFloat("_Smoothness", 0.35f);
+            AssetDatabase.CreateAsset(m, GenDir + "/M_Floor.mat");
+            return m;
+        }
+
+        static Material TextMat(Font font)
+        {
+            if (textMat) return textMat;
+            var sh = Shader.Find("CM101/WorldText");
+            if (!sh) return font.material;
+            textMat = new Material(sh) { name = "M_WorldText", mainTexture = font.material.mainTexture };
+            AssetDatabase.CreateAsset(textMat, GenDir + "/M_WorldText.mat");
+            return textMat;
+        }
+
+        static Transform Group(string name, Transform parent)
+        {
+            var t = new GameObject(name).transform;
+            t.SetParent(parent, false);
+            return t;
+        }
+
+        static GameObject Box(string name, Vector3 min, Vector3 max, Color c, Transform parent = null, float smooth = 0.25f)
+        {
+            var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            g.name = name;
+            g.layer = Layers.Solid;
+            g.transform.SetParent(parent ? parent : zoneGeo, false);
+            g.transform.position = (min + max) * 0.5f;
+            g.transform.localScale = max - min;
+            g.GetComponent<MeshRenderer>().sharedMaterial = Mat(c, smooth);
+            GameObjectUtility.SetStaticEditorFlags(g, StaticEditorFlags.BatchingStatic);
+            return g;
+        }
+
+        static GameObject Box(string name, float x0, float y0, float z0, float x1, float y1, float z1, Color c, Transform parent = null)
+            => Box(name, new Vector3(x0, y0, z0), new Vector3(x1, y1, z1), c, parent);
+
+        static GameObject Deco(PrimitiveType type, Transform parent, Vector3 pos, Vector3 scale, Material mat, string name, int layer = 0)
+        {
+            var g = GameObject.CreatePrimitive(type);
+            g.name = name;
+            Object.DestroyImmediate(g.GetComponent<Collider>());
+            g.transform.SetParent(parent, false);
+            g.transform.position = pos;
+            g.transform.localScale = scale;
+            g.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            g.layer = layer;
+            return g;
+        }
+
+        static GameObject Decal(Transform parent, Vector3 center, float sx, float sz, Color c, float emission, string name, float yaw = 0f, float y = 0.012f)
+        {
+            var g = Deco(PrimitiveType.Cube, parent, new Vector3(center.x, center.y + y, center.z), new Vector3(sx, 0.01f, sz), Mat(c, 0.1f, emission), name);
+            g.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            g.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            return g;
+        }
+
+        static void Wall(float x0, float z0, float x1, float z1, float h, Color? c = null)
+            => Box("Wall", new Vector3(x0, 0f, z0), new Vector3(x1, h, z1), c ?? CWall);
+
+        /// <summary>z = const 인 칸막이 벽 (x0~x1, 두께 0.4). openings = (x0, x1).</summary>
+        static void WallZ(float z, float x0, float x1, params (float a, float b)[] openings)
+        {
+            float x = x0;
+            foreach (var o in openings.OrderBy(o => o.a))
+            {
+                if (o.a > x) Wall(x, z - 0.2f, o.a, z + 0.2f, DividerH);
+                x = o.b;
+            }
+            if (x < x1) Wall(x, z - 0.2f, x1, z + 0.2f, DividerH);
+        }
+
+        /// <summary>x = const 인 칸막이 벽 (z0~z1). openings = (z0, z1).</summary>
+        static void WallX(float x, float z0, float z1, params (float a, float b)[] openings)
+        {
+            float z = z0;
+            foreach (var o in openings.OrderBy(o => o.a))
+            {
+                if (o.a > z) Wall(x - 0.2f, z, x + 0.2f, o.a, DividerH);
+                z = o.b;
+            }
+            if (z < z1) Wall(x - 0.2f, z, x + 0.2f, z1, DividerH);
+        }
+
+        static void Crate(float x0, float z0, float x1, float z1, float h, bool dark = false)
+            => Box("Crate", new Vector3(x0, 0f, z0), new Vector3(x1, h, z1), dark ? CCrateDark : CCrate);
+
+        /// <summary>높이 단 (점프로 오르는 매대·진열대). 윗면 테두리 색으로 높이를 읽기 쉽게 한다.</summary>
+        static GameObject Tier(string name, float x0, float z0, float x1, float z1, float h, Color? c = null)
+        {
+            Color col = c ?? (h > 1.5f ? CTier2 : CTier1);
+            var g = Box(name, new Vector3(x0, 0f, z0), new Vector3(x1, h, z1), col);
+            Deco(PrimitiveType.Cube, zoneGeo, new Vector3((x0 + x1) * 0.5f, h + 0.005f, (z0 + z1) * 0.5f), new Vector3(x1 - x0 - 0.12f, 0.01f, z1 - z0 - 0.12f),
+                Mat(Color.Lerp(col, Color.white, 0.35f), 0.3f), name + "_Top").GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            return g;
+        }
+
+        static void Pallet(float x0, float z0, float x1, float z1, float deckY = 0.85f)
+        {
+            var root = Group("Pallet", zoneGeo);
+            Box("PalletDeck", new Vector3(x0, deckY, z0), new Vector3(x1, deckY + 0.12f, z1), CPallet, root);
+            float[] xs = { x0, (x0 + x1) * 0.5f - 0.15f, x1 - 0.3f };
+            float[] zs = { z0, z1 - 0.3f };
+            foreach (var x in xs)
+                foreach (var z in zs)
+                    Box("PalletLeg", new Vector3(x, 0f, z), new Vector3(x + 0.3f, deckY, z + 0.3f), CCrateDark, root);
+            Box("PalletLoad", new Vector3(x0 + 0.2f, deckY + 0.12f, z0 + 0.2f), new Vector3(x1 - 0.2f, deckY + 1.3f, z1 - 0.2f), CCrate, root);
+        }
+
+        /// <summary>진열 테이블: 상판 0.85~0.95 (아래로 지나가거나 점프로 올라감). 과일 장식은 긴 가장자리만.</summary>
+        static void ProduceTable(float x0, float z0, float x1, float z1, Color pile, string crateVariant = null)
+        {
+            var root = Group("ProduceTable", zoneGeo);
+            Box("TableTop", new Vector3(x0, 0.85f, z0), new Vector3(x1, 0.95f, z1), new Color(0.55f, 0.75f, 0.45f), root);
+            const float t = 0.18f;
+            Box("TableLeg", x0, 0f, z0, x0 + t, 0.85f, z0 + t, CMetal, root);
+            Box("TableLeg", x1 - t, 0f, z0, x1, 0.85f, z0 + t, CMetal, root);
+            Box("TableLeg", x0, 0f, z1 - t, x0 + t, 0.85f, z1, CMetal, root);
+            Box("TableLeg", x1 - t, 0f, z1 - t, x1, 0.85f, z1, CMetal, root);
+            // 나무 과일 상자 (Blender 제작, Models/Props/FruitCrate) — 큰 상자 2×2로 상판을 꽉 채움 (상자+과일 충돌 높이 0.40 → 위 표면 1.35). 없으면 예전 구 장식
+            var crate = string.IsNullOrEmpty(crateVariant) ? null : AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Models/Props/FruitCrate/Prop_FruitCrateL_" + crateVariant + ".prefab");
+            if (crate != null)
+            {
+                float cx = (x0 + x1) * 0.5f, cz = (z0 + z1) * 0.5f;
+                for (int ix = -1; ix <= 1; ix += 2)
+                    for (int iz = -1; iz <= 1; iz += 2)
+                    {
+                        var go = (GameObject)PrefabUtility.InstantiatePrefab(crate, root);
+                        go.name = "FruitCrate";
+                        go.transform.position = new Vector3(cx + ix * 0.70f, 0.95f, cz + iz * 0.55f);
+                        go.transform.rotation = Quaternion.Euler(0f, Random.value < 0.5f ? 0f : 180f, 0f);
+                    }
+                return;
+            }
+            for (int i = 0; i < 14; i++)
+            {
+                bool north = i % 2 == 0;
+                var p = new Vector3(Random.Range(x0 + 0.3f, x1 - 0.3f), 0.95f + 0.13f, north ? z1 - 0.22f : z0 + 0.22f);
+                Deco(PrimitiveType.Sphere, root, p, Vector3.one * Random.Range(0.2f, 0.28f), Mat(Color.Lerp(pile, Color.HSVToRGB(Random.value, 0.6f, 1f), 0.25f), 0.6f), "Produce");
+            }
+        }
+
+        /// <summary>바닥에 놓는 작은 과일 상자 (발판, 충돌 높이 0.40)</summary>
+        static void FloorCrate(string variant, float x, float z, float yaw)
+        {
+            var crate = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Models/Props/FruitCrate/Prop_FruitCrate_" + variant + ".prefab");
+            if (crate == null) return;
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(crate, zoneGeo);
+            go.name = "StepCrate";
+            go.transform.position = new Vector3(x, 0f, z);
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+        }
+
+        static Transform ProducePile(Transform parent, float x0, float z0, float x1, float z1, float y, Color pile, int n)
+        {
+            var root = Group("Pile", parent);
+            for (int i = 0; i < n; i++)
+            {
+                var p = new Vector3(Random.Range(x0 + 0.3f, x1 - 0.3f), y + Random.Range(0.1f, 0.35f), Random.Range(z0 + 0.3f, z1 - 0.3f));
+                Deco(PrimitiveType.Sphere, root, p, Vector3.one * Random.Range(0.28f, 0.42f), Mat(Color.Lerp(pile, Color.HSVToRGB(Random.value, 0.6f, 1f), 0.25f), 0.6f), "Produce");
+            }
+            return root;
+        }
+
+        static void Basket(float x0, float z0, float x1, float z1, char gapSide, float gap = 0.95f)
+        {
+            var root = Group("Basket", zoneGeo);
+            const float h = 0.55f, t = 0.1f;
+            float cx = (x0 + x1) * 0.5f, cz = (z0 + z1) * 0.5f, g = gap * 0.5f;
+            void Side(Vector3 a, Vector3 b) => Box("BasketWall", a, b, CBasket, root);
+            if (gapSide == 'S') { Side(new Vector3(x0, 0, z0), new Vector3(cx - g, h, z0 + t)); Side(new Vector3(cx + g, 0, z0), new Vector3(x1, h, z0 + t)); }
+            else Side(new Vector3(x0, 0, z0), new Vector3(x1, h, z0 + t));
+            if (gapSide == 'N') { Side(new Vector3(x0, 0, z1 - t), new Vector3(cx - g, h, z1)); Side(new Vector3(cx + g, 0, z1 - t), new Vector3(x1, h, z1)); }
+            else Side(new Vector3(x0, 0, z1 - t), new Vector3(x1, h, z1));
+            if (gapSide == 'W') { Side(new Vector3(x0, 0, z0), new Vector3(x0 + t, h, cz - g)); Side(new Vector3(x0, 0, cz + g), new Vector3(x0 + t, h, z1)); }
+            else Side(new Vector3(x0, 0, z0), new Vector3(x0 + t, h, z1));
+            if (gapSide == 'E') { Side(new Vector3(x1 - t, 0, z0), new Vector3(x1, h, cz - g)); Side(new Vector3(x1 - t, 0, cz + g), new Vector3(x1, h, z1)); }
+            else Side(new Vector3(x1 - t, 0, z0), new Vector3(x1, h, z1));
+        }
+
+        static void Cart(Vector3 center, float yaw)
+        {
+            var root = Group("Cart", zoneGeo);
+            root.position = center;
+            root.rotation = Quaternion.Euler(0f, yaw, 0f);
+            const float w = 1.4f, d = 2.2f, legT = 0.09f, bottom = 0.85f;
+            void Local(string n, Vector3 c, Vector3 s, Color col)
+            {
+                var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                g.name = n;
+                g.layer = Layers.Solid;
+                g.transform.SetParent(root, false);
+                g.transform.localPosition = c;
+                g.transform.localScale = s;
+                g.GetComponent<MeshRenderer>().sharedMaterial = Mat(col, 0.6f);
+            }
+            foreach (var sx in new[] { -1f, 1f })
+                foreach (var sz in new[] { -1f, 1f })
+                    Local("CartLeg", new Vector3(sx * (w * 0.5f - legT), bottom * 0.5f, sz * (d * 0.5f - legT)), new Vector3(legT, bottom, legT), CMetal);
+            Local("CartBasket", new Vector3(0f, bottom + 0.4f, 0f), new Vector3(w, 0.8f, d), new Color(0.85f, 0.2f, 0.25f));
+            Local("CartHandle", new Vector3(0f, bottom + 0.9f, -d * 0.5f - 0.15f), new Vector3(w, 0.08f, 0.08f), CMetal);
+        }
+
+        /// <summary>선반(기본 높이 3). 긴 양면에 상품 장식.</summary>
+        static void Shelf(float x0, float z0, float x1, float z1, float h = 3f, bool decoA = true, bool decoB = true)
+        {
+            Box("Shelf", new Vector3(x0, 0f, z0), new Vector3(x1, h, z1), CShelf);
+            bool alongX = (x1 - x0) >= (z1 - z0);
+            for (float y = 0.95f; y < h - 0.2f; y += 0.95f)
+            {
+                if (alongX)
+                {
+                    if (decoA) ShelfRow(new Vector3(0, y, z0), Vector3.back, x0, x1, true);
+                    if (decoB) ShelfRow(new Vector3(0, y, z1), Vector3.forward, x0, x1, true);
+                }
+                else
+                {
+                    if (decoA) ShelfRow(new Vector3(x0, y, 0), Vector3.left, z0, z1, false);
+                    if (decoB) ShelfRow(new Vector3(x1, y, 0), Vector3.right, z0, z1, false);
+                }
+            }
+        }
+
+        static void ShelfRow(Vector3 face, Vector3 outDir, float a0, float a1, bool alongX)
+        {
+            float a = a0 + 0.1f;
+            while (a < a1 - 0.4f)
+            {
+                float w = Random.Range(0.35f, 0.7f), h = Random.Range(0.35f, 0.7f);
+                Color c = Color.HSVToRGB(Random.value, Random.Range(0.45f, 0.8f), Random.Range(0.8f, 1f));
+                Vector3 p = alongX ? new Vector3(a + w * 0.5f, face.y + h * 0.5f, face.z) : new Vector3(face.x, face.y + h * 0.5f, a + w * 0.5f);
+                p += outDir * 0.13f;
+                Vector3 s = alongX ? new Vector3(w * 0.9f, h, 0.26f) : new Vector3(0.26f, h, w * 0.9f);
+                Deco(PrimitiveType.Cube, zoneGeo, p, s, Mat(c, 0.35f), "Product");
+                a += w + 0.04f;
+            }
+        }
+
+        /// <summary>표지판. yRot = 보는 사람이 바라보는 방향.</summary>
+        static void Sign(string text, Vector3 pos, float yRot, float size, Color c, Transform parent = null)
+        {
+            var g = new GameObject("Sign_" + text);
+            g.transform.SetParent(parent ? parent : zoneGeo, false);
+            g.transform.position = pos;
+            g.transform.rotation = Quaternion.Euler(0f, yRot, 0f);
+            var tm = g.AddComponent<TextMesh>();
+            tm.text = text;
+            tm.fontSize = 64;
+            tm.characterSize = size;
+            tm.anchor = TextAnchor.MiddleCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.color = c;
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            tm.font = font;
+            g.GetComponent<MeshRenderer>().sharedMaterial = TextMat(font);
+        }
+
+        static void Label(string text, Vector3 pos, Color c, float size = 0.03f)
+        {
+            Sign(text, pos, 0f, size, c, labels);
+            labels.GetChild(labels.childCount - 1).rotation = Quaternion.Euler(45f, 0f, 0f);
+        }
+
+        static void ZoneBorder(ZoneDef z)
+        {
+            var m = z.color;
+            Decal(zoneGeo, new Vector3((z.x0 + z.x1) * 0.5f, 0, z.z0 + 0.45f), z.x1 - z.x0 - 0.8f, 0.25f, m, 0.2f, "ZoneLine");
+            Decal(zoneGeo, new Vector3((z.x0 + z.x1) * 0.5f, 0, z.z1 - 0.45f), z.x1 - z.x0 - 0.8f, 0.25f, m, 0.2f, "ZoneLine");
+            Decal(zoneGeo, new Vector3(z.x0 + 0.45f, 0, (z.z0 + z.z1) * 0.5f), 0.25f, z.z1 - z.z0 - 0.8f, m, 0.2f, "ZoneLine");
+            Decal(zoneGeo, new Vector3(z.x1 - 0.45f, 0, (z.z0 + z.z1) * 0.5f), 0.25f, z.z1 - z.z0 - 0.8f, m, 0.2f, "ZoneLine");
+        }
+
+        // ================================================================== 음식·지점·은신처
+
+        static FoodItem Food(string id, FoodType type, float x, float z, float y = 0f, string note = null, bool tutorial = false, FoodKind kind = FoodKind.None, int cm = 0)
+        {
+            var f = FoodItem.Create(type, foodVariant++ % 3, new Vector3(x, y, z), kind, cm, zoneMarks);
+            f.name = id;
+            f.isTutorial = tutorial;
+            var fs = f.gameObject.AddComponent<FoodSpawn>();
+            fs.id = id;
+            fs.zone = curZone;
+            fs.kind = type;
+            fs.food = kind;
+            fs.cm = cm;
+            fs.tutorial = tutorial;
+            fs.note = note;
+            Label($"{id} {f.Length}cm" + (y > 0.1f ? " (점프)" : ""), new Vector3(x, y + 1.1f, z), tutorial ? new Color(0.6f, 0.6f, 0.6f) : new Color(0.9f, 0.3f, 0.35f));
+            return f;
+        }
+
+        static PointMarker Point(string id, PointKind kind, float x, float z, float yaw = 0f)
+        {
+            var g = new GameObject(id);
+            g.transform.SetParent(zoneMarks, false);
+            g.transform.position = new Vector3(x, 0f, z);
+            g.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            var pm = g.AddComponent<PointMarker>();
+            pm.id = id;
+            pm.zone = curZone;
+            pm.kind = kind;
+            switch (kind)
+            {
+                case PointKind.ZoneSign:
+                    BuildZoneSign(g.transform, yaw);
+                    break;
+                case PointKind.Supply:
+                {
+                    var sp = g.AddComponent<SupplyPoint>();
+                    sp.label = id + " 보충 지점";
+                    var m = Mat(new Color(0.35f, 0.9f, 0.5f), 0.1f, 0.6f);
+                    Deco(PrimitiveType.Cube, g.transform, g.transform.position + Vector3.up * 0.012f, new Vector3(0.9f, 0.01f, 0.25f), m, "PlusH");
+                    Deco(PrimitiveType.Cube, g.transform, g.transform.position + Vector3.up * 0.012f, new Vector3(0.25f, 0.01f, 0.9f), m, "PlusV");
+                    break;
+                }
+            }
+            if (kind != PointKind.Start && kind != PointKind.Exit)
+                Label(id, g.transform.position + Vector3.up * 1.5f, new Color(0.2f, 0.45f, 0.9f), 0.035f);
+            return pm;
+        }
+
+        /// <summary>
+        /// 구역 안내판: 구역 입구 바닥에 구역 색 원판 + 기둥 위 양면 표지판(한글 구역 이름 + 영어 표기).
+        /// 충돌체 없음. 표지판은 머리 위(2.1~2.8)에 있어 길과 시야를 막지 않는다. yaw = 입구로 들어오는 사람이 바라보는 방향.
+        /// </summary>
+        static void BuildZoneSign(Transform root, float yaw)
+        {
+            var z = Zones.First(d => d.id == curZone);
+            Vector3 c = root.position;
+            Color col = z.color;
+            Deco(PrimitiveType.Cylinder, root, c + Vector3.up * 0.012f, new Vector3(1.4f, 0.005f, 1.4f), Mat(col, 0.2f, 0.5f), "Pad")
+                .GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            Quaternion rot = Quaternion.Euler(0f, yaw, 0f);
+            Vector3 right = rot * Vector3.right;
+            Vector3 fwd = rot * Vector3.forward;
+            Vector3 poleBase = c + right * 0.62f;
+            Deco(PrimitiveType.Cylinder, root, poleBase + Vector3.up * 1.2f, new Vector3(0.06f, 1.2f, 0.06f), Mat(CMetal, 0.5f), "Pole");
+            Vector3 boardC = c + Vector3.up * 2.45f;
+            var board = Deco(PrimitiveType.Cube, root, boardC, new Vector3(1.7f, 0.72f, 0.06f), Mat(Color.Lerp(col, Color.white, 0.55f), 0.3f, 0.15f), "Board");
+            board.transform.rotation = rot;
+            var rim = Deco(PrimitiveType.Cube, root, boardC, new Vector3(1.82f, 0.84f, 0.04f), Mat(col * 0.8f, 0.3f), "BoardRim");
+            rim.transform.rotation = rot;
+            Color txt = new Color(0.16f, 0.2f, 0.26f);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                float y = side < 0f ? yaw : yaw + 180f;
+                Vector3 face = boardC + fwd * (side * 0.045f); // 앞면(-fwd 쪽)은 fwd를 보는 사람이, 뒷면은 반대편 사람이 읽는다
+                Sign(z.name, face + Vector3.up * 0.1f, y, 0.045f, txt, root);
+                Sign(z.sign, face + Vector3.down * 0.2f, y, 0.028f, col * 0.75f, root);
+            }
+        }
+
+        static void SmallHideout(string id, float x0, float z0, float x1, float z1, char entrance, string label)
+        {
+            var root = Group(id, zoneMarks);
+            const float h = 0.9f, t = 0.15f;
+            var hm = root.gameObject.AddComponent<HideoutMarker>();
+            hm.id = id;
+            hm.zone = curZone;
+            hm.kind = HideoutKind.Small;
+            hm.footprintCenter = new Vector3((x0 + x1) * 0.5f, 0.5f, (z0 + z1) * 0.5f);
+            hm.footprintSize = new Vector3(x1 - x0, 1f, z1 - z0);
+            float cx = (x0 + x1) * 0.5f, cz = (z0 + z1) * 0.5f;
+            if (entrance != 'W') Box("Wall", x0, 0, z0, x0 + t, h, z1, CHide, root);
+            if (entrance != 'E') Box("Wall", x1 - t, 0, z0, x1, h, z1, CHide, root);
+            if (entrance != 'S') Box("Wall", x0, 0, z0, x1, h, z0 + t, CHide, root);
+            if (entrance != 'N') Box("Wall", x0, 0, z1 - t, x1, h, z1, CHide, root);
+            Box("Lid", x0, h, z0, x1, h + 0.1f, z1, new Color(0.3f, 0.42f, 0.75f), root);
+            switch (entrance)
+            {
+                case 'S': hm.path = new[] { new Vector3(cx, 0f, z0 + 0.05f), new Vector3(cx, 0f, z1 - t - 0.05f) }; break;
+                case 'N': hm.path = new[] { new Vector3(cx, 0f, z1 - 0.05f), new Vector3(cx, 0f, z0 + t + 0.05f) }; break;
+                case 'W': hm.path = new[] { new Vector3(x0 + 0.05f, 0f, cz), new Vector3(x1 - t - 0.05f, 0f, cz) }; break;
+                default: hm.path = new[] { new Vector3(x1 - 0.05f, 0f, cz), new Vector3(x0 + t + 0.05f, 0f, cz) }; break;
+            }
+            Label($"{id} {label}", new Vector3(cx, 1.6f, cz), new Color(0.3f, 0.45f, 0.9f), 0.035f);
+        }
+
+        static void LongHideoutMarker(string id, Vector3[] path, Vector3 fpMin, Vector3 fpMax, string label)
+        {
+            var root = Group(id, zoneMarks);
+            var hm = root.gameObject.AddComponent<HideoutMarker>();
+            hm.id = id;
+            hm.zone = curZone;
+            hm.kind = HideoutKind.Long;
+            hm.twoWay = true;
+            hm.path = path;
+            hm.footprintCenter = (fpMin + fpMax) * 0.5f;
+            hm.footprintSize = fpMax - fpMin;
+            Label($"{id} {label}", hm.footprintCenter + Vector3.up * 2.2f, new Color(0.45f, 0.3f, 0.9f), 0.035f);
+        }
+
+        static HazardMarker Marker(GameObject g, string id, HazardKind kind, bool intro, Vector3[] path = null, float lane = 0f, Vector3 areaCenter = default, Vector3 areaSize = default,
+                                   float warn = 0f, bool loop = false)
+        {
+            var h = g.AddComponent<HazardMarker>();
+            h.id = id;
+            h.zone = curZone;
+            h.kind = kind;
+            h.isIntro = intro;
+            h.path = path;
+            h.loop = loop;
+            h.laneWidth = lane;
+            h.areaCenter = areaCenter;
+            h.areaSize = areaSize;
+            h.warnSeconds = warn;
+            Vector3 lp = path != null && path.Length > 0 ? path[0] : areaCenter;
+            Label(id + (intro ? " (소개)" : ""), new Vector3(lp.x, 2.0f, lp.z), CStaff, 0.035f);
+            return h;
+        }
+
+        // ================================================================== 위험 (실제 동작)
+
+        static void Staff(string id, bool intro, Vector3[] path, float speed)
+        {
+            var staff = new GameObject(id);
+            staff.transform.SetParent(zoneMarks, false);
+            staff.transform.position = path[0];
+            Vector3 d = path[1] - path[0];
+            staff.transform.rotation = Quaternion.LookRotation(new Vector3(d.x, 0f, d.z).normalized);
+            var foot = new GameObject("Foot").transform;
+            foot.SetParent(staff.transform, false);
+            foot.gameObject.layer = Layers.Hazard;
+            ProtoFactory.Prim(PrimitiveType.Cube, foot, new Vector3(0f, 0.175f, 0f), new Vector3(1f, 0.35f, 1.6f), Mat(new Color(0.18f, 0.18f, 0.22f), 0.5f), "Shoe");
+            ProtoFactory.Prim(PrimitiveType.Cube, foot, new Vector3(0f, 0.36f, 0.3f), new Vector3(0.9f, 0.04f, 0.9f), Mat(Color.white, 0.3f), "Lace");
+            ProtoFactory.Prim(PrimitiveType.Cylinder, foot, new Vector3(0f, 1.85f, -0.15f), new Vector3(0.6f, 1.5f, 0.6f), Mat(new Color(0.25f, 0.35f, 0.6f), 0.2f), "Leg");
+            var fc = foot.gameObject.AddComponent<BoxCollider>();
+            fc.center = new Vector3(0f, 0.175f, 0f);
+            fc.size = new Vector3(1f, 0.35f, 1.6f);
+            var shadow = ProtoFactory.Prim(PrimitiveType.Cylinder, staff.transform, new Vector3(0f, 0.012f, 0f), new Vector3(1f, 0.005f, 1.6f), Mat(new Color(0.1f, 0.1f, 0.12f), 0f), "Shadow");
+            shadow.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            var sf = staff.AddComponent<StaffFoot>();
+            sf.foot = foot;
+            sf.footCollider = fc;
+            sf.shadow = shadow.GetComponent<Renderer>();
+            sf.waypoints = path;
+            sf.moveSpeed = speed;
+            var lines = Group(id + "_PatrolLine", zoneMarks);
+            int segs = path.Length == 2 ? 1 : path.Length;
+            for (int i = 0; i < segs; i++)
+            {
+                Vector3 a = path[i], b = path[(i + 1) % path.Length];
+                Vector3 dd = b - a;
+                Decal(lines, (a + b) * 0.5f, 0.12f, dd.magnitude, CStaff, 0.5f, "Line", Mathf.Atan2(dd.x, dd.z) * Mathf.Rad2Deg);
+            }
+            Marker(staff, id, HazardKind.Staff, intro, path, 1.6f, warn: 1.5f, loop: path.Length > 2);
+        }
+
+        /// <summary>청소기: 경로를 따라 흡입 영역(기본 폭 3, 앞으로 3.4)으로 움직인다. zoneW/zoneD로 영역 크기를 바꿀 수 있다.</summary>
+        static void Vacuum(string id, bool intro, Vector3[] route, float speed = 1.3f, float zoneW = 3.0f, float zoneD = 3.4f)
+        {
+            var vac = new GameObject(id);
+            vac.layer = Layers.Hazard;
+            vac.transform.SetParent(zoneMarks, false);
+            vac.transform.position = route[0];
+            vac.transform.rotation = Quaternion.LookRotation((route[1] - route[0]).normalized);
+            var vb = vac.AddComponent<BoxCollider>();
+            vb.center = new Vector3(0f, 0.225f, 0f);
+            vb.size = new Vector3(1.3f, 0.45f, 1.3f);
+            var vrb = vac.AddComponent<Rigidbody>();
+            vrb.isKinematic = true;
+            ProtoFactory.Prim(PrimitiveType.Cylinder, vac.transform, new Vector3(0f, 0.2f, 0f), new Vector3(1.4f, 0.2f, 1.4f), Mat(new Color(0.25f, 0.27f, 0.3f), 0.6f), "Body");
+            ProtoFactory.Prim(PrimitiveType.Cylinder, vac.transform, new Vector3(0f, 0.41f, 0f), new Vector3(1.15f, 0.015f, 1.15f), Mat(new Color(0.75f, 0.78f, 0.82f), 0.7f), "Top");
+            ProtoFactory.Prim(PrimitiveType.Cube, vac.transform, new Vector3(0f, 0.12f, 0.66f), new Vector3(1.2f, 0.16f, 0.12f), Mat(new Color(0.08f, 0.08f, 0.1f), 0.3f), "Mouth");
+            ProtoFactory.Prim(PrimitiveType.Sphere, vac.transform, new Vector3(0f, 0.45f, 0.35f), Vector3.one * 0.12f, Mat(new Color(1f, 0.3f, 0.2f), 0.2f, 2f), "Lamp");
+            var v = vac.AddComponent<VacuumCleaner>();
+            v.route = route;
+            v.loopRoute = false;
+            v.speed = speed;
+            v.pauseAtEnds = 1.2f;
+            float zc = 0.7f + zoneD * 0.5f;
+            v.zoneLocalCenter = new Vector3(0f, 0.4f, zc);
+            v.zoneSize = new Vector3(zoneW, 0.8f, zoneD);
+            var zm = ProtoFactory.Prim(PrimitiveType.Cube, vac.transform, new Vector3(0f, 0.012f, zc), new Vector3(zoneW, 0.01f, zoneD), Mat(new Color(1f, 0.35f, 0.15f), 0.1f, 1f), "SuctionZone");
+            zm.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            v.zoneMarker = zm.GetComponent<Renderer>();
+            var lines = Group(id + "_Route", zoneMarks);
+            for (int i = 1; i < route.Length; i++)
+            {
+                Vector3 dd = route[i] - route[i - 1];
+                Decal(lines, (route[i] + route[i - 1]) * 0.5f, 0.1f, dd.magnitude, new Color(1f, 0.45f, 0.2f), 0.4f, "RouteLine", Mathf.Atan2(dd.x, dd.z) * Mathf.Rad2Deg);
+            }
+            Marker(vac, id, HazardKind.Vacuum, intro, route, zoneW + 1f, warn: 2f);
+        }
+
+        /// <summary>무너지는 세일 매대. 상품을 모서리(edgeA~edgeB, y = 윗면 높이)에 쌓고 pushDir로 쏟는다.</summary>
+        static void SaleStack(string id, bool intro, Vector3 edgeA, Vector3 edgeB, Vector3 pushDir, Vector3 landCenter, Vector3 landSize)
+        {
+            var go = new GameObject(id);
+            go.transform.SetParent(zoneMarks, false);
+            var stack = go.AddComponent<FallingStack>();
+            var items = new List<Rigidbody>();
+            Vector3 along = edgeB - edgeA;
+            float len = along.magnitude;
+            Vector3 dir = along.normalized;
+            int n = Mathf.Max(2, Mathf.FloorToInt(len / 0.9f));
+            bool alongX = Mathf.Abs(dir.x) > Mathf.Abs(dir.z);
+            for (int row = 0; row < 3; row++)
+                for (int i = 0; i < n; i++)
+                {
+                    if (row == 2 && i % 2 == 1) continue;
+                    var it = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    it.name = "SaleItem";
+                    it.layer = Layers.Hazard;
+                    it.transform.SetParent(go.transform, false);
+                    it.transform.position = edgeA + dir * (0.45f + i * (len - 0.9f) / Mathf.Max(1, n - 1)) + Vector3.up * (0.23f + row * 0.47f);
+                    it.transform.localScale = alongX ? new Vector3(0.8f, 0.45f, 0.45f) : new Vector3(0.45f, 0.45f, 0.8f);
+                    it.GetComponent<MeshRenderer>().sharedMaterial = Mat(Color.HSVToRGB((i * 0.13f + row * 0.31f) % 1f, 0.7f, 1f), 0.4f);
+                    var rb = it.AddComponent<Rigidbody>();
+                    rb.mass = 0.4f;
+                    rb.isKinematic = true;
+                    rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                    items.Add(rb);
+                }
+            stack.items = items.ToArray();
+            stack.pushDirection = (pushDir + Vector3.up * 0.15f).normalized;
+            stack.pushSpeed = 3.2f;
+            stack.zoneCenter = new Vector3(landCenter.x, edgeA.y * 0.5f + 0.8f, landCenter.z);
+            stack.zoneSize = new Vector3(landSize.x + 1f, edgeA.y + 3.2f, landSize.z + 1f);
+            var marker = ProtoFactory.Prim(PrimitiveType.Cube, go.transform, Vector3.zero, new Vector3(landSize.x, 0.01f, landSize.z), Mat(new Color(1f, 0.85f, 0.2f), 0.1f, 1.2f), "LandingMarker");
+            marker.transform.position = new Vector3(landCenter.x, landCenter.y + 0.013f, landCenter.z);
+            marker.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            stack.landingMarker = marker.GetComponent<Renderer>();
+            float signYaw = Mathf.Atan2(-pushDir.x, -pushDir.z) * Mathf.Rad2Deg;
+            Sign("SALE!", (edgeA + edgeB) * 0.5f + Vector3.up * 1.8f, signYaw, 0.05f, new Color(1f, 0.3f, 0.3f));
+            Sign("SALE!", (edgeA + edgeB) * 0.5f + Vector3.up * 1.8f, signYaw + 180f, 0.05f, new Color(1f, 0.3f, 0.3f)); // 양면
+            Marker(go, id, HazardKind.FallingShelf, intro, null, 0f, landCenter, landSize, 0.3f);
+        }
+
+        static void Conveyor(string id, bool intro, Vector3 center, float width, float length, float yaw, float speed)
+        {
+            var g = new GameObject(id);
+            g.transform.SetParent(zoneMarks, false);
+            g.transform.position = center;
+            g.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            ProtoFactory.Prim(PrimitiveType.Cube, g.transform, new Vector3(0f, 0.011f, 0f), new Vector3(width, 0.02f, length), Mat(new Color(0.18f, 0.19f, 0.22f), 0.5f), "Belt");
+            var stripes = new List<Transform>();
+            var sm = Mat(new Color(1f, 0.8f, 0.2f), 0.2f, 0.4f);
+            int n = Mathf.RoundToInt(length / 0.7f);
+            for (int i = 0; i < n; i++)
+            {
+                var s = ProtoFactory.Prim(PrimitiveType.Cube, g.transform, new Vector3(0f, 0.024f, -length * 0.5f + i * (length / n)), new Vector3(width * 0.8f, 0.01f, 0.1f), sm, "Stripe");
+                s.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+                stripes.Add(s.transform);
+            }
+            var cb = g.AddComponent<ConveyorBelt>();
+            cb.size = new Vector2(width, length);
+            cb.speed = speed;
+            cb.stripes = stripes.ToArray();
+            bool alongX = Mathf.Abs(Mathf.Sin(yaw * Mathf.Deg2Rad)) > 0.5f;
+            Marker(g, id, HazardKind.Belt, intro, null, 0f, center + Vector3.up * 0.1f, alongX ? new Vector3(length, 0.2f, width) : new Vector3(width, 0.2f, length));
+        }
+
+        static void Surface(string id, SurfaceKind kind, bool intro, float cx, float cz, float sx, float sz)
+        {
+            var g = new GameObject(id);
+            g.transform.SetParent(zoneMarks, false);
+            g.transform.position = new Vector3(cx, 0f, cz);
+            var zone = g.AddComponent<SurfaceZone>();
+            zone.kind = kind;
+            zone.size = new Vector3(sx, 0.9f, sz);
+            Color c = kind == SurfaceKind.Slippery ? new Color(0.45f, 0.8f, 1f) : new Color(1f, 0.72f, 0.82f);
+            var marker = ProtoFactory.Prim(PrimitiveType.Cube, g.transform, new Vector3(0f, 0.013f, 0f), new Vector3(sx, 0.01f, sz), Mat(c, 0.95f, 0.15f), "Puddle");
+            marker.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            zone.marker = marker.GetComponent<Renderer>();
+            for (int i = 0; i < 6; i++)
+            {
+                var p = new Vector3(cx + Random.Range(-0.45f, 0.45f) * sx, 0.02f, cz + Random.Range(-0.45f, 0.45f) * sz);
+                Deco(PrimitiveType.Sphere, g.transform, p, new Vector3(Random.Range(0.4f, 0.9f), 0.04f, Random.Range(0.4f, 0.9f)), Mat(Color.Lerp(c, Color.white, 0.3f), 0.95f), "Blob")
+                    .GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            }
+            if (kind == SurfaceKind.Slippery)
+            {
+                var bottle = Deco(PrimitiveType.Cylinder, g.transform, new Vector3(cx - sx * 0.35f, 0.15f, cz - sz * 0.35f), new Vector3(0.3f, 0.35f, 0.3f), Mat(new Color(0.3f, 0.6f, 0.95f), 0.9f), "SpilledBottle");
+                bottle.transform.rotation = Quaternion.Euler(0f, 30f, 90f);
+            }
+            else
+                Deco(PrimitiveType.Sphere, g.transform, new Vector3(cx - sx * 0.3f, 0.18f, cz + sz * 0.3f), Vector3.one * 0.35f, Mat(new Color(1f, 0.8f, 0.88f), 0.6f), "MeltedScoop");
+            Marker(g, id, kind == SurfaceKind.Slippery ? HazardKind.Spill : HazardKind.Melt, intro, null, 0f, new Vector3(cx, 0.4f, cz), new Vector3(sx, 0.8f, sz));
+        }
+
+        static void Ice(string id, bool intro, float x, float z)
+        {
+            var g = new GameObject(id);
+            g.transform.SetParent(zoneMarks, false);
+            g.transform.position = new Vector3(x, 0f, z);
+            var ib = g.AddComponent<IceBlock>();
+            var block = Box("IceBlock", new Vector3(x - 0.45f, 0f, z - 0.45f), new Vector3(x + 0.45f, 0.9f, z + 0.45f), new Color(0.7f, 0.92f, 1f), g.transform, 0.95f);
+            GameObjectUtility.SetStaticEditorFlags(block, 0);
+            block.transform.rotation = Quaternion.Euler(0f, 20f, 0f);
+            var ring = ProtoFactory.Prim(PrimitiveType.Cylinder, g.transform, new Vector3(0f, 0.012f, 0f), new Vector3(ib.radius * 2f, 0.005f, ib.radius * 2f), Mat(new Color(0.55f, 0.85f, 1f), 0.2f, 0.8f), "FreezeRing");
+            ring.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            ib.ring = ring.GetComponent<Renderer>();
+            ib.block = block.GetComponent<Renderer>();
+            Marker(g, id, HazardKind.Ice, intro, null, 0f, new Vector3(x, 0.5f, z), new Vector3(ib.radius * 2f, 1f, ib.radius * 2f));
+        }
+
+        static void Rollers(string id, bool intro, RollerLook look, int count, float cx, float cz, float sx, float sz, float speed)
+        {
+            var g = new GameObject(id);
+            g.transform.SetParent(zoneMarks, false);
+            g.transform.position = new Vector3(cx, 0f, cz);
+            var rs = g.AddComponent<RollerSpawner>();
+            rs.look = look;
+            rs.count = count;
+            rs.areaCenter = new Vector3(cx, 0f, cz);
+            rs.areaSize = new Vector3(sx, 2f, sz);
+            rs.speed = speed;
+            Marker(g, id, HazardKind.Rollers, intro, null, 0f, new Vector3(cx, 1f, cz), new Vector3(sx, 2f, sz));
+        }
+
+        static void Volley(string id, bool intro, float sx0, float sz0, float sx1, float sz1, Vector3 from, Vector3 to, float lane = 1.2f)
+        {
+            var root = Group(id + "_Stand", zoneGeo);
+            Box("FruitStand", new Vector3(sx0, 0f, sz0), new Vector3(sx1, 1.2f, sz1), new Color(0.55f, 0.75f, 0.45f), root);
+            var pile = ProducePile(root, sx0, sz0, sx1, sz1, 1.2f, new Color(1f, 0.45f, 0.3f), 18);
+            var g = new GameObject(id);
+            g.transform.SetParent(zoneMarks, false);
+            g.transform.position = from;
+            var rv = g.AddComponent<RollerVolley>();
+            rv.from = from;
+            rv.to = to;
+            rv.laneWidth = lane;
+            rv.standVisual = pile;
+            Vector3 d = to - from;
+            var laneG = Decal(g.transform, (from + to) * 0.5f, lane, d.magnitude, new Color(1f, 0.55f, 0.2f), 0.35f, "Lane", Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg);
+            rv.laneMarker = laneG.GetComponent<Renderer>();
+            Marker(g, id, HazardKind.RollingFruit, intro, new[] { from, to }, lane, warn: 0.5f);
+        }
+
+        // ================================================================== 월드
+
+        static void BuildWorld()
+        {
+            var lightGo = new GameObject("Directional Light");
+            var light = lightGo.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = 1.15f;
+            light.color = new Color(1f, 0.97f, 0.92f);
+            light.shadows = LightShadows.Soft;
+            lightGo.transform.rotation = Quaternion.Euler(55f, 35f, 0f);
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.75f, 0.78f, 0.85f);
+            RenderSettings.ambientEquatorColor = new Color(0.6f, 0.62f, 0.66f);
+            RenderSettings.ambientGroundColor = new Color(0.4f, 0.4f, 0.42f);
+
+            world = new GameObject("Level_Main").transform;
+            labels = Group("_Labels (에디터 전용)", world);
+            labels.gameObject.AddComponent<HideInPlay>();
+            var shell = Group("Shell", world);
+            zoneGeo = shell;
+
+            var floor = Box("Floor", new Vector3(0f, -0.2f, 0f), new Vector3(OuterX, 0f, MapD), Color.white, shell);
+            floor.GetComponent<MeshRenderer>().sharedMaterial = CheckerMat();
+            Wall(-0.5f, -0.5f, 0f, MapD + 0.5f, OuterH);
+            Wall(-0.5f, -0.5f, MapW + 0.5f, 0f, OuterH);
+            Wall(-0.5f, MapD, MapW + 0.5f, MapD + 0.5f, OuterH);
+            Wall(MapW, -0.5f, MapW + 0.5f, 32.6f, OuterH);
+            Wall(MapW, 35.4f, MapW + 0.5f, MapD + 0.5f, OuterH);
+            Box("ExitLintel", MapW, 2.6f, 32.6f, MapW + 0.5f, OuterH, 35.4f, CWall);
+            Wall(MapW + 0.5f, 29.5f, OuterX, 30f, OuterH, new Color(0.55f, 0.75f, 0.95f));
+            Wall(MapW + 0.5f, 38f, OuterX, 38.5f, OuterH, new Color(0.55f, 0.75f, 0.95f));
+            Wall(OuterX - 0.5f, 30f, OuterX, 38f, OuterH, new Color(0.55f, 0.75f, 0.95f));
+            BuildEnclosure(shell);
+
+            // 칸막이 벽 (ㄹ자 동선). 주 출입구 폭 3, 작은 샛길 1.2~1.4
+            WallX(10f, 0f, 13f, (5f, 8f));                          // Z0 | Z1 (창고 문)
+            WallZ(13f, 0f, MapW, (26.5f, 29.5f), (30.4f, 31.8f));   // Z0·Z1 | Z3·Z2
+            WallX(17f, 13f, 27f, (18.6f, 21.4f), (23.6f, 24.9f));   // Z3 | Z2
+            WallZ(27f, 0f, MapW, (0.4f, 1.9f), (4.2f, 7.2f));       // Z3·Z2 | Z4·Z5·Z6 (0.4~1.9 = 냉동고 하단 통로 입구)
+            WallX(14f, 27f, MapD, (32.6f, 35.4f), (38.9f, 40.3f));  // Z4 | Z5
+            WallX(28f, 27f, MapD, (32.6f, 35.4f));                  // Z5 | Z6 (골 게이트)
+
+            foreach (var z in Zones)
+            {
+                var zr = Group($"{z.id}_{z.sign}", world);
+                var zv = zr.gameObject.AddComponent<ZoneVolume>();
+                zv.zone = z.id;
+                zv.displayName = z.name;
+                zv.xMin = z.x0; zv.xMax = z.x1; zv.zMin = z.z0; zv.zMax = z.z1;
+                zv.targetMinutes = z.minutes;
+                zv.foodTargetCm = z.food;
+                zv.entryCm = z.entry;
+                zv.exitCm = z.exit;
+                zv.color = z.color;
+                zoneGeo = Group("Geometry", zr);
+                zoneMarks = Group("Gameplay", zr);
+                curZone = z.id;
+                ZoneBorder(z);
+                Label($"{z.id} {z.name} · {z.food}cm · {z.entry}→{z.exit}cm", new Vector3((z.x0 + z.x1) * 0.5f, 4.2f, (z.z0 + z.z1) * 0.5f), z.color * 0.7f, 0.06f);
+                switch (z.id)
+                {
+                    case ZoneId.Z0: BuildZ0(); break;
+                    case ZoneId.Z1: BuildZ1(); break;
+                    case ZoneId.Z2: BuildZ2(); break;
+                    case ZoneId.Z3: BuildZ3(); break;
+                    case ZoneId.Z4: BuildZ4(); break;
+                    case ZoneId.Z5: BuildZ5(); break;
+                    case ZoneId.Z6: BuildZ6(); break;
+                }
+            }
+
+            Deco(PrimitiveType.Cylinder, world, new Vector3(BeaconTop.x, BeaconTop.y * 0.5f, BeaconTop.z), new Vector3(0.25f, BeaconTop.y * 0.5f, 0.25f),
+                Mat(new Color(0.4f, 1f, 0.6f), 0f, 2f), "ExitBeacon").GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+
+            BuildPlayer();
+        }
+
+        /// <summary>
+        /// 높은 외벽 + 천장으로 매장을 완전히 덮는다. 외벽과 천장은 그림자를 드리우지 않는다(바닥이 어두워지지 않게).
+        /// 외벽 윗부분은 색띠와 창문 없는 판넬로, 천장에는 형광등 판을 줄지어 달아 마트 실내처럼 보이게 한다.
+        /// </summary>
+        static void BuildEnclosure(Transform shell)
+        {
+            foreach (var r in shell.GetComponentsInChildren<MeshRenderer>())
+                if (r.name == "Wall" || r.name == "ExitLintel") r.shadowCastingMode = ShadowCastingMode.Off;
+
+            var ceiling = Box("Ceiling", new Vector3(-0.5f, CeilingY, -0.5f), new Vector3(OuterX + 0.5f, CeilingY + 0.3f, MapD + 0.5f), new Color(0.9f, 0.92f, 0.94f), shell);
+            ceiling.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+
+            // 외벽 윗부분 색띠 (높이감을 주고 빈 벽을 덜 밋밋하게)
+            var band = Mat(new Color(0.55f, 0.72f, 0.82f), 0.3f);
+            var bandLow = Mat(new Color(0.95f, 0.75f, 0.45f), 0.3f);
+            void Bands(Vector3 center, Vector3 size)
+            {
+                Deco(PrimitiveType.Cube, shell, new Vector3(center.x, 6f, center.z), new Vector3(size.x, 0.5f, size.z), bandLow, "WallBand").GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+                Deco(PrimitiveType.Cube, shell, new Vector3(center.x, 11f, center.z), new Vector3(size.x, 3f, size.z), band, "WallBand").GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            }
+            Bands(new Vector3(0.02f, 0, MapD * 0.5f), new Vector3(0.06f, 0, MapD));
+            Bands(new Vector3(MapW * 0.5f, 0, 0.02f), new Vector3(MapW, 0, 0.06f));
+            Bands(new Vector3(MapW * 0.5f, 0, MapD - 0.02f), new Vector3(MapW, 0, 0.06f));
+            Bands(new Vector3(MapW - 0.02f, 0, 16.3f), new Vector3(0.06f, 0, 32.6f));
+            Bands(new Vector3(MapW - 0.02f, 0, 38.2f), new Vector3(0.06f, 0, 5.6f));
+
+            // 천장 형광등 판 (빛을 내지 않는 발광 표시만)
+            var lamp = Mat(new Color(1f, 0.98f, 0.9f), 0.1f, 1.2f);
+            for (float x = 3f; x < MapW; x += 6f)
+                for (float z = 3.5f; z < MapD; z += 5.5f)
+                    Deco(PrimitiveType.Cube, shell, new Vector3(x, CeilingY - 0.03f, z), new Vector3(3f, 0.05f, 0.5f), lamp, "CeilingLamp")
+                        .GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+        }
+
+        static void BuildPlayer()
+        {
+            var leaderGo = new GameObject("Leader");
+            leaderGo.layer = Layers.Lead;
+            leaderGo.transform.position = startPoint.transform.position + Vector3.up * 0.32f;
+            leaderGo.transform.rotation = startPoint.transform.rotation;
+            var sc = leaderGo.AddComponent<SphereCollider>();
+            sc.radius = 0.3f;
+            var rb = leaderGo.AddComponent<Rigidbody>();
+            rb.mass = 1f;
+            rb.freezeRotation = true;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            ProtoFactory.BuildBear(leaderGo.transform, 0.6f, new Color(1f, 0.4f, 0.48f), true);
+            var leader = leaderGo.AddComponent<LeaderController>();
+            leader.jumpHeight = 1.15f;   // 1.0 매대 한 단 (2026-09-29 조정: 1.35 → 1.15)
+
+            var camGo = new GameObject("Main Camera");
+            camGo.tag = "MainCamera";
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.2f, 0.22f, 0.28f);
+            cam.nearClipPlane = 0.05f;
+            cam.fieldOfView = 60f;
+            camGo.AddComponent<AudioListener>();
+            camGo.transform.position = leaderGo.transform.position - leaderGo.transform.forward * 3f + Vector3.up * 1.6f;
+            camGo.transform.LookAt(leaderGo.transform.position);
+            var orbit = camGo.AddComponent<OrbitCamera>();
+            orbit.target = leader;
+            leader.cam = orbit;
+
+            var chain = new GameObject("JellyChain").AddComponent<JellyChain>();
+            chain.leader = leader;
+
+            var gmGo = new GameObject("GameManager");
+            var gm = gmGo.AddComponent<GameManager>();
+            gmGo.AddComponent<GameHUD>();
+            gm.leader = leader;
+            gm.chain = chain;
+            gm.cam = orbit;
+            gm.exitDoor = exitDoor;
+            gm.tutorialGate = tutorialGate;
+            gm.warehouseBounds = new Bounds(new Vector3(5f, 2f, 6.5f), new Vector3(10.6f, 6f, 13f));
+            gm.finalSpawnPoint = finalPoint.transform;
+            gm.exitPoint = exitPoint.transform;
+        }
+
+        // ---- Z0 창고 (x 0~10, z 0~13): 이동·시점·먹기·달리기·점프·기분 표현 연습
+        static void BuildZ0()
+        {
+            startPoint = Point("START", PointKind.Start, 2.2f, 2.2f, 90f);
+            Crate(0f, 11.3f, 1.6f, 12.8f, 2f, true);
+            Crate(8.1f, 0f, 9.8f, 1.8f, 2.4f, true);
+            Crate(3.6f, 6.4f, 5f, 7.4f, 1.0f);
+
+            Food("F-Z0-01", FoodType.Fruit, 2.5f, 5f, 0f, "출발 지점 앞 바닥", true, kind: FoodKind.Peach, cm: 3);
+            Pallet(4.3f, 1.4f, 6.8f, 3.8f);
+            Food("F-Z0-02", FoodType.Fruit, 5.5f, 2.6f, 0f, "팔레트 아래", true, kind: FoodKind.Chocolate, cm: 3);
+            Tier("JumpCrate_0.5", 6f, 8.8f, 7.4f, 10.2f, 0.5f, CCrate);
+            Tier("JumpCrate_1.0", 7.4f, 8.8f, 8.8f, 10.2f, T1, CCrate);
+            Food("F-Z0-03", FoodType.Bread, 8.1f, 9.5f, T1, "상자 위 (점프 연습)", true, kind: FoodKind.Pudding, cm: 4);
+            Basket(0.7f, 8.8f, 2.6f, 10.6f, 'E');
+            // (2026-10-06 창고 음식 3개로) Food("F-Z0-04", FoodType.Cookie, 1.5f, 9.7f, 0f, "바구니 안 (은신 연습)", true);
+            var hs = Group("HS-Z0-00", zoneMarks).gameObject.AddComponent<HideoutMarker>();
+            hs.id = "HS-Z0-00";
+            hs.zone = ZoneId.Z0;
+            hs.kind = HideoutKind.Practice;
+            hs.path = new[] { new Vector3(2.6f, 0f, 9.7f), new Vector3(0.9f, 0f, 9.7f) };
+            hs.footprintCenter = new Vector3(1.65f, 0.3f, 9.7f);
+            hs.footprintSize = new Vector3(1.9f, 0.6f, 1.8f);
+
+            tutorialGate = Box("TutorialGate", new Vector3(9.85f, 0f, 5f), new Vector3(10.15f, 3f, 8f), new Color(0.55f, 0.58f, 0.62f));
+            GameObjectUtility.SetStaticEditorFlags(tutorialGate, 0);
+            tutorialGate.SetActive(false);
+            Sign("WAREHOUSE  -  TUTORIAL", new Vector3(5f, 2.4f, 0.05f), 180f, 0.06f, CSign);
+            Sign("FRESH  >", new Vector3(9.75f, 3.2f, 6.5f), 90f, 0.06f, CSign);
+        }
+
+        // ---- Z1 과일·야채 (x 10~34, z 0~13): 쉬운 음식 + 굴러다니는 과일 + 굴러오는 과일 무더기(소개), 청소기 없음
+        static void BuildZ1()
+        {
+            Point("ZS1", PointKind.ZoneSign, 11.4f, 6.5f, 90f);
+            ProduceTable(14.8f, 2.4f, 17.6f, 4.6f, new Color(1f, 0.4f, 0.3f), "Red");
+            ProduceTable(14.8f, 8.4f, 17.6f, 10.6f, new Color(1f, 0.7f, 0.2f), "Orange");
+            FloorCrate("Orange", 14.52f, 9.75f, 90f);   // F-Z1-02 발판: 바닥 → 작은 상자(0.40) → 큰 상자 위(1.35)
+            ProduceTable(20.6f, 2.4f, 23.4f, 4.6f, new Color(0.5f, 0.85f, 0.3f), "Green");
+            ProduceTable(20.6f, 8.4f, 23.4f, 10.6f, new Color(1f, 0.5f, 0.6f), "Peach");
+            Tier("FruitHill_0.5", 26.2f, 3.5f, 29.7f, 9.2f, 0.5f, new Color(0.6f, 0.8f, 0.45f));
+            Tier("FruitHill_1.0", 27.3f, 4.9f, 28.7f, 7.8f, T1, new Color(0.7f, 0.88f, 0.5f));
+            SmallHideout("HS-Z1-01", 31.2f, 2.4f, 33f, 6.7f, 'N', "바구니");
+
+            Food("F-Z1-01", FoodType.Fruit, 12.8f, 2.8f, 0f, "입구 바닥 (쉬움)", kind: FoodKind.Peach, cm: 3);
+            Food("F-Z1-02", FoodType.Fruit, 15.75f, 9.9f, 1.35f, "과일 상자 위 (발판 상자 → 점프)", kind: FoodKind.Lemon, cm: 3);
+            Food("F-Z1-03", FoodType.Fruit, 22f, 3.5f, 0f, "테이블 아래", kind: FoodKind.Avocado, cm: 3);
+            Food("F-Z1-04", FoodType.Fruit, 24.5f, 10.4f, 0f, "굴러오는 과일 레인 옆", kind: FoodKind.Carrot, cm: 3);
+            Food("F-Z1-05", FoodType.Bread, 28f, 6.4f, T1, "과일 언덕 꼭대기 (점프 2번)", kind: FoodKind.Eggplant, cm: 4);
+            Point("SP1", PointKind.Supply, 19.2f, 1.2f);
+
+            Rollers("HZ-Z1-ROLLERS", true, RollerLook.Fruit, 5, 22f, 6.5f, 22.5f, 12f, 2.0f);
+            Volley("HZ-Z1-VOLLEY", true, 32.4f, 9.5f, 34f, 12.4f, new Vector3(32f, 0f, 11.4f), new Vector3(14f, 0f, 11.4f));
+            // 청소기 없음 (2026-09-29 결정: 과일 코너는 쉬운 구간으로 둔다)
+            Sign("SNACKS  ^", new Vector3(28f, 3.2f, 12.75f), 0f, 0.06f, CSign);
+        }
+
+        // ---- Z2 과자 (x 17~34, z 13~27): 중앙 매대 + 사이드 매대 세일 붕괴 5곳, 계단 진열대(2.0), 청소기 없음
+        static void BuildZ2()
+        {
+            Point("ZS2", PointKind.ZoneSign, 28.3f, 14f, 0f);
+            SmallHideout("HS-Z2-01", 18.6f, 15.9f, 22.9f, 17.7f, 'W', "엔드캡 바구니");
+            Shelf(22.9f, 16f, 24.4f, 17f);
+            Shelf(25.9f, 16f, 30.1f, 17f);
+            Shelf(18.4f, 22.9f, 23.4f, 23.9f);
+            Shelf(24.8f, 22.9f, 30.1f, 23.9f);
+            Shelf(17.7f, 26f, 33.3f, 26.8f, 3f, true, false);
+            Tier("PromoGondola", 21.2f, 19.2f, 28.3f, 20.8f, T1, new Color(0.95f, 0.5f, 0.45f));
+            Tier("SnackStairs_1.0", 31.5f, 17.2f, 34f, 22.8f, T1);
+            Tier("SnackStairs_2.0", 32.7f, 18.6f, 34f, 21.4f, T2);
+            Cart(new Vector3(30.1f, 0f, 18.2f), 90f);
+            SmallHideout("HS-Z2-02", 29.7f, 24.1f, 34f, 25.9f, 'W', "PVC 상자");
+
+            // 세일 붕괴: 중앙 매대 2곳 + 사이드 매대 3곳
+            SaleStack("HZ-Z2-SALE-1", true, new Vector3(22f, T1, 20.65f), new Vector3(24.9f, T1, 20.65f), Vector3.forward, new Vector3(23.45f, 0f, 21.65f), new Vector3(2.9f, 2f, 1.6f));
+            SaleStack("HZ-Z2-SALE-2", false, new Vector3(24.9f, T1, 19.35f), new Vector3(27.7f, T1, 19.35f), Vector3.back, new Vector3(26.3f, 0f, 18.3f), new Vector3(2.8f, 2f, 1.6f));
+            Box("SideLedge", 23f, 0f, 17f, 24.3f, 1.4f, 17.4f, new Color(0.95f, 0.45f, 0.4f));
+            SaleStack("HZ-Z2-SALE-3", false, new Vector3(23f, 1.4f, 17.2f), new Vector3(24.3f, 1.4f, 17.2f), Vector3.forward, new Vector3(23.65f, 0f, 18.3f), new Vector3(1.6f, 2f, 1.6f));
+            Box("SideLedge", 25.5f, 0f, 22.5f, 29.4f, 1.4f, 22.9f, new Color(0.95f, 0.45f, 0.4f));
+            SaleStack("HZ-Z2-SALE-4", false, new Vector3(25.5f, 1.4f, 22.7f), new Vector3(29.4f, 1.4f, 22.7f), Vector3.back, new Vector3(27.45f, 0f, 21.65f), new Vector3(3.9f, 2f, 1.5f));
+            Box("SideLedge", 19.8f, 0f, 25.6f, 24.1f, 1.4f, 26f, new Color(0.95f, 0.45f, 0.4f));
+            SaleStack("HZ-Z2-SALE-5", false, new Vector3(19.8f, 1.4f, 25.8f), new Vector3(24.1f, 1.4f, 25.8f), Vector3.back, new Vector3(21.95f, 0f, 24.75f), new Vector3(4.3f, 2f, 1.5f));
+
+            Food("F-Z2-01", FoodType.Fruit, 26.4f, 24.75f, 0f, "북쪽 통로 (바깥길)", kind: FoodKind.Candy, cm: 3);
+            Food("F-Z2-02", FoodType.Fruit, 24.9f, 20f, T1, "중앙 행사 매대 위 (점프, 붕괴 사이)", kind: FoodKind.WrappedCandy, cm: 3);
+            Food("F-Z2-03", FoodType.Bread, 30.1f, 18.2f, 0f, "카트 아래", kind: FoodKind.Marshmallow, cm: 4);
+            Food("F-Z2-04", FoodType.Bread, 21.8f, 16.8f, 0f, "엔드캡 바구니 안", kind: FoodKind.Chocolate, cm: 4);
+            Food("F-Z2-05", FoodType.Cookie, 33.35f, 20f, T2, "계단 진열대 꼭대기 (점프 2번)", kind: FoodKind.Cookie, cm: 6);
+            Point("SP2", PointKind.Supply, 32.9f, 14.8f);
+
+            // 청소기 없음 (2026-09-29 결정: 과자 코너는 세일 붕괴에 집중한다)
+            Sign("<  DRINKS", new Vector3(17.25f, 3.2f, 20f), 270f, 0.06f, CSign);
+        }
+
+        // ---- Z3 음료·유제품 (x 0~17, z 13~27): 굴러다니는 캔, 쏟은 음료(미끄럼), 직원 2명, 냉장고 하단 은신 통로
+        static void BuildZ3()
+        {
+            Point("ZS3", PointKind.ZoneSign, 15.9f, 20f, 270f);
+            var fr = Group("FridgeBank", zoneGeo);
+            Box("Tunnel_WallS", 1.3f, 0f, 13.2f, 12.9f, 0.9f, 13.5f, CFridge, fr);
+            Box("Tunnel_Block", 2.8f, 0f, 14.8f, 11.4f, 0.9f, 15.8f, CFridge, fr);
+            Box("Tunnel_WallW", 1.3f, 0f, 13.2f, 1.5f, 0.9f, 15.8f, CFridge, fr);
+            Box("Tunnel_WallE", 12.7f, 0f, 13.2f, 12.9f, 0.9f, 15.8f, CFridge, fr);
+            Box("Tunnel_Roof", 1.3f, 0.9f, 13.2f, 12.9f, 1.0f, 15.8f, new Color(0.6f, 0.65f, 0.75f), fr);
+            Box("Fridge_Upper", 1.3f, 1.0f, 13.2f, 12.9f, 3.2f, 15.8f, CFridge, fr);
+            Box("Fridge", 12.9f, 0f, 13.2f, 15.6f, 3.2f, 15.8f, CFridge, fr);
+            for (float x = 1.8f; x < 15f; x += 2f)
+                Deco(PrimitiveType.Cube, fr, new Vector3(x + 0.9f, 2.1f, 15.82f), new Vector3(1.7f, 1.8f, 0.04f), Mat(new Color(0.7f, 0.9f, 1f), 0.9f, 0.4f), "FridgeGlass");
+            LongHideoutMarker("HL-Z3-01",
+                new[] { new Vector3(2.15f, 0f, 15.8f), new Vector3(2.15f, 0f, 14.15f), new Vector3(12.05f, 0f, 14.15f), new Vector3(12.05f, 0f, 15.8f) },
+                new Vector3(1.3f, 0f, 13.2f), new Vector3(12.9f, 1f, 15.8f), "냉장고 하단");
+
+            Tier("DrinkPallet_1.0", 6.1f, 19.2f, 8.7f, 21.8f, T1, new Color(0.5f, 0.75f, 0.95f));
+            Tier("DrinkPallet_2.0", 6.8f, 19.9f, 8f, 21.1f, T2, new Color(0.6f, 0.82f, 1f));
+            SmallHideout("HS-Z3-01", 12.5f, 25f, 16.8f, 26.8f, 'W', "우유 상자");
+            Box("DrinkLedge", 0f, 0f, 17.2f, 0.6f, 1.2f, 20f, new Color(0.5f, 0.75f, 0.9f));
+            SaleStack("HZ-Z3-SALE", false, new Vector3(0.3f, 1.2f, 17.2f), new Vector3(0.3f, 1.2f, 20f), Vector3.right, new Vector3(1.6f, 0f, 18.6f), new Vector3(2f, 2f, 2.8f));
+
+            Food("F-Z3-01", FoodType.Fruit, 15.2f, 16.6f, 0f, "냉장고 옆 구석", kind: FoodKind.Butter, cm: 3);
+            Food("F-Z3-02", FoodType.Fruit, 2.1f, 16.4f, 0f, "은신 통로 입구 앞", kind: FoodKind.Milk, cm: 3);
+            Food("F-Z3-03", FoodType.Bread, 12.4f, 21.6f, 0f, "직원 순찰 안쪽", kind: FoodKind.Bread, cm: 4);
+            Food("F-Z3-04", FoodType.Cheese, 7.1f, 14.15f, 0f, "긴 은신 통로 가운데", kind: FoodKind.CheeseSlice, cm: 5);
+            Food("F-Z3-05", FoodType.Cheese, 7.4f, 20.5f, T2, "음료 팔레트 꼭대기 (점프 2번)", kind: FoodKind.TomCheese, cm: 5);
+            Point("SP3", PointKind.Supply, 1f, 21.3f);
+
+            Rollers("HZ-Z3-CANS", true, RollerLook.Can, 5, 8.5f, 20.4f, 15.5f, 12f, 2.2f);
+            Surface("HZ-Z3-SPILL-1", SurfaceKind.Slippery, true, 6.7f, 17.9f, 3.4f, 2f);
+            Surface("HZ-Z3-SPILL-2", SurfaceKind.Slippery, false, 3.5f, 23.5f, 3f, 3f);
+            Surface("HZ-Z3-SPILL-3", SurfaceKind.Slippery, false, 11f, 24f, 3.4f, 2f);
+            Staff("HZ-Z3-STAFF-A", true, new[] { new Vector3(4.2f, 0f, 16.8f), new Vector3(13.5f, 0f, 16.8f), new Vector3(13.5f, 0f, 22.4f), new Vector3(4.2f, 0f, 22.4f) }, 1.7f);
+            Staff("HZ-Z3-STAFF-B", true, new[] { new Vector3(15.2f, 0f, 23.8f), new Vector3(2.8f, 0f, 23.8f) }, 1.9f);
+            // 작은 청소기 2대가 음료 팔레트 양옆에서 남북으로 엇갈려 왕복 (2026-09-29: 흡입 구역 축소 + 반대편 1대 추가)
+            Vacuum("HZ-Z3-VAC-1", true, new[] { new Vector3(9.8f, 0f, 18.4f), new Vector3(9.8f, 0f, 21.8f) }, 1.1f, 2.2f, 2.4f);
+            Vacuum("HZ-Z3-VAC-2", false, new[] { new Vector3(5.2f, 0f, 21.2f), new Vector3(5.2f, 0f, 18.0f) }, 1.1f, 2.2f, 2.4f);
+            Sign("ICE CREAM  ^", new Vector3(5.7f, 3.2f, 26.75f), 0f, 0.06f, new Color(0.3f, 0.5f, 0.8f));
+        }
+
+        // ---- Z4 아이스크림 (x 0~14, z 27~41): 냉동고(1.0) 사이 청소기 2대, 녹은 아이스크림(끈적), 얼음(2초 빙결)
+        static void BuildZ4()
+        {
+            Point("ZS4", PointKind.ZoneSign, 5.7f, 28.3f, 0f);
+            Tier("Freezer_A", 3.4f, 30.2f, 7f, 31.6f, T1, CFreezer);
+            Tier("Freezer_B", 8.6f, 30.2f, 11.4f, 31.6f, T1, CFreezer);
+            Tier("Freezer_C", 3.4f, 35.8f, 6f, 37.2f, T1, CFreezer);
+            Tier("Freezer_D", 8f, 35.8f, 11.4f, 37.2f, T1, CFreezer);
+            // 서쪽 벽을 따라 긴 냉동고. 하단 통로는 음료 코너 샛길(z 27)에서 시작해 북쪽 끝에서 동쪽으로 나온다.
+            var fb = Group("FreezerBank", zoneGeo);
+            Box("Tunnel_WallW", 0f, 0f, 27.2f, 0.3f, 0.82f, 40.8f, CFreezer, fb);
+            Box("Tunnel_WallE", 1.6f, 0f, 27.2f, 2.2f, 0.82f, 38.9f, CFreezer, fb);
+            Box("Tunnel_WallN", 0f, 0f, 40.5f, 2.2f, 0.82f, 40.8f, CFreezer, fb);
+            Box("Tunnel_Roof", 0f, 0.82f, 27.2f, 2.2f, 0.9f, 40.8f, new Color(0.6f, 0.65f, 0.75f), fb);
+            Box("Freezer_Top", 0f, 0.9f, 27.2f, 2.2f, T1, 40.8f, CFreezer, fb);
+            LongHideoutMarker("HL-Z4-01",
+                new[] { new Vector3(0.95f, 0f, 27.2f), new Vector3(0.95f, 0f, 39.7f), new Vector3(2.2f, 0f, 39.7f) },
+                new Vector3(0f, 0f, 27.2f), new Vector3(2.2f, T1, 40.8f), "냉동고 하단");
+            Tier("ConeDisplay_1.0", 11.2f, 27.2f, 13.8f, 29.4f, T1, new Color(1f, 0.8f, 0.85f));
+            Tier("ConeDisplay_2.0", 12.4f, 27.2f, 13.8f, 28.4f, T2, new Color(1f, 0.7f, 0.8f));
+
+            Food("F-Z4-01", FoodType.Fruit, 12.9f, 40.2f, 0f, "청소기 경로 끝 구석", kind: FoodKind.IceCreamChoco, cm: 3);
+            Food("F-Z4-02", FoodType.Bread, 3.6f, 39.6f, 0f, "녹은 아이스크림 웅덩이 안", kind: FoodKind.IceCreamVanilla, cm: 4);
+            Food("F-Z4-03", FoodType.Bread, 9.7f, 36.5f, T1, "냉동고 위 (점프)", kind: FoodKind.IceCreamStrawberry, cm: 4);
+            Food("F-Z4-04", FoodType.Cake, 13.1f, 27.8f, T2, "콘 진열대 꼭대기 (점프 2번, 한 판 유일)", kind: FoodKind.Donut, cm: 4);
+            Food("F-Z4-05", FoodType.Bread, 3.5f, 28.5f, 0f, "구역 입구 바닥 (2026-10-06 추가)", kind: FoodKind.Pudding, cm: 4);
+            Point("SP4", PointKind.Supply, 3f, 28.4f);
+
+            // 음료 코너와 같은 작은 청소기 (2026-09-29: 흡입 3×3.4 → 2.2×2.4)
+            Vacuum("HZ-Z4-VAC-1", true, new[] { new Vector3(3.2f, 0f, 33.7f), new Vector3(10.6f, 0f, 33.7f) }, 1.1f, 2.2f, 2.4f);
+            // 카운터로 넘어가는 문 앞 청소기는 더 작게 (2026-09-29: 2.2×2.4 → 1.6×1.7)
+            Vacuum("HZ-Z4-VAC-2", true, new[] { new Vector3(12.6f, 0f, 32.3f), new Vector3(12.6f, 0f, 39.6f) }, 1.1f, 1.6f, 1.7f);
+            Surface("HZ-Z4-MELT-1", SurfaceKind.Sticky, true, 7.8f, 30.9f, 1.6f, 1.4f);
+            Surface("HZ-Z4-MELT-2", SurfaceKind.Sticky, false, 3.9f, 39f, 2.6f, 2.4f);
+            Surface("HZ-Z4-MELT-3", SurfaceKind.Sticky, false, 9.8f, 28.6f, 2.2f, 1.6f);
+            Ice("HZ-Z4-ICE-1", true, 7f, 36.5f);
+            Ice("HZ-Z4-ICE-2", false, 13.1f, 30.9f);
+            Staff("HZ-Z4-STAFF", false, new[] { new Vector3(5f, 0f, 39.3f), new Vector3(10.8f, 0f, 39.3f) }, 1.6f);
+            Sign("CHECKOUT  >", new Vector3(13.75f, 3.2f, 34f), 90f, 0.06f, CSign);
+        }
+
+        // ---- Z5 카운터 (x 14~28, z 27~41): 모든 기믹 조합
+        static void BuildZ5()
+        {
+            Point("ZS5", PointKind.ZoneSign, 15.2f, 34f, 90f);
+            Tier("Counter_K1", 16.4f, 28f, 23.6f, 29.3f, T1, CCounter);
+            Tier("Counter_K2", 16.4f, 31.1f, 23.6f, 32.4f, T1, CCounter);
+            Box("Register", 16.7f, T1, 28.1f, 17.5f, T1 + 0.5f, 29.2f, new Color(0.3f, 0.3f, 0.35f));
+            Box("Register", 22.5f, T1, 31.2f, 23.3f, T1 + 0.5f, 32.3f, new Color(0.3f, 0.3f, 0.35f));
+            // 계산대 K3: 하단에 ㄷ자 은신 통로 (남쪽 양 끝이 입구)
+            var k3 = Group("Counter_K3", zoneGeo);
+            Box("Tunnel_WallW", 16.3f, 0f, 34.9f, 16.45f, 0.82f, 37.2f, CCounter, k3);
+            Box("Tunnel_WallE", 27.65f, 0f, 34.9f, 27.8f, 0.82f, 37.2f, CCounter, k3);
+            Box("Tunnel_WallN", 16.3f, 0f, 37.05f, 27.8f, 0.82f, 37.2f, CCounter, k3);
+            Box("Tunnel_Block", 17.75f, 0f, 34.9f, 26.35f, 0.82f, 35.75f, CCounter, k3);
+            Box("Tunnel_Roof", 16.3f, 0.82f, 34.9f, 27.8f, 0.9f, 37.2f, new Color(0.45f, 0.32f, 0.22f), k3);
+            Box("CounterTop", 16.3f, 0.9f, 34.9f, 27.8f, T1, 37.2f, CCounter, k3);
+            LongHideoutMarker("HL-Z5-01",
+                new[] { new Vector3(17.1f, 0f, 34.9f), new Vector3(17.1f, 0f, 36.4f), new Vector3(27f, 0f, 36.4f), new Vector3(27f, 0f, 34.9f) },
+                new Vector3(16.3f, 0f, 34.9f), new Vector3(27.8f, T1, 37.2f), "계산대 하단");
+            Tier("PriceTower_1.0", 25.2f, 27.2f, 27.8f, 29.4f, T1, new Color(0.98f, 0.85f, 0.45f));
+            Tier("PriceTower_2.0", 26.4f, 27.2f, 27.8f, 28.4f, T2, new Color(1f, 0.75f, 0.35f));
+
+            Conveyor("HZ-Z5-BELT-1", true, new Vector3(20f, 0f, 30.2f), 1.3f, 7.2f, 270f, 1.3f);
+            Conveyor("HZ-Z5-BELT-2", true, new Vector3(20f, 0f, 33.65f), 1.3f, 7.2f, 270f, 1.5f);
+            SaleStack("HZ-Z5-SALE-1", false, new Vector3(17.4f, T1, 32.25f), new Vector3(21.6f, T1, 32.25f), Vector3.forward, new Vector3(19.5f, 0f, 33.3f), new Vector3(4.2f, 2f, 1.6f));
+            SaleStack("HZ-Z5-SALE-2", false, new Vector3(18.5f, T1, 35.05f), new Vector3(22.7f, T1, 35.05f), Vector3.back, new Vector3(20.6f, 0f, 34.1f), new Vector3(4.2f, 2f, 1.6f));
+            // 경로를 동쪽으로 줄이고 흡입 영역도 줄여 얼음에 닿지 않게 한다 (2026-09-29)
+            Vacuum("HZ-Z5-VAC", false, new[] { new Vector3(21.8f, 0f, 39.2f), new Vector3(24.4f, 0f, 39.2f) }, 1.1f, 2.2f, 2.4f);
+            Staff("HZ-Z5-STAFF", false, new[] { new Vector3(25.4f, 0f, 30.3f), new Vector3(25.4f, 0f, 34f) }, 1.8f);
+            Rollers("HZ-Z5-ROLLERS", false, RollerLook.Mixed, 4, 20f, 34f, 11f, 12f, 2.1f);
+            Surface("HZ-Z5-SPILL", SurfaceKind.Slippery, false, 25.8f, 32f, 2.4f, 2f);
+            Surface("HZ-Z5-MELT", SurfaceKind.Sticky, false, 15.3f, 29.5f, 1.8f, 2.4f);
+            Ice("HZ-Z5-ICE", false, 17.4f, 38.6f);
+
+            Food("F-Z5-01", FoodType.Fruit, 21f, 30.2f, 0f, "벨트 위 (움직임)", kind: FoodKind.Avocado, cm: 3);
+            Food("F-Z5-02", FoodType.Fruit, 18.9f, 33.65f, 0f, "벨트 위 (움직임)", kind: FoodKind.Eggplant, cm: 3);
+            Food("F-Z5-03", FoodType.Bread, 20f, 28.65f, T1, "계산대 위 (점프)", kind: FoodKind.Butter, cm: 3);
+            Food("F-Z5-04", FoodType.Cheese, 27.1f, 27.8f, T2, "가격표 탑 꼭대기 (점프 2번)", kind: FoodKind.Cookie, cm: 3);
+            Food("F-Z5-05", FoodType.Bread, 26.5f, 39.5f, 0f, "출구 쪽 구석 (2026-10-06 추가)", kind: FoodKind.Pudding, cm: 3);
+            Point("SP5", PointKind.Supply, 27.2f, 40.3f);
+            Sign("GOAL  >", new Vector3(27.75f, 3.4f, 34f), 90f, 0.08f, new Color(0.9f, 0.35f, 0.55f));
+        }
+
+        // ---- Z6 출구 (x 28~34, z 27~41): 위험 없는 골 홀
+        static void BuildZ6()
+        {
+            Box("GatePost", 27.6f, 0f, 32f, 28.4f, DividerH, 32.6f, new Color(1f, 0.75f, 0.85f));
+            Box("GatePost", 27.6f, 0f, 35.4f, 28.4f, DividerH, 36f, new Color(1f, 0.75f, 0.85f));
+            Decal(zoneGeo, new Vector3(31f, 0f, 34f), 5.6f, 2.8f, new Color(1f, 0.82f, 0.35f), 0.35f, "GoalCarpet", 0f, 0.014f);
+            for (int i = 0; i < 6; i++)
+                Decal(zoneGeo, new Vector3(28.75f + i * 0.9f, 0f, 34f), 0.4f, 0.4f, new Color(1f, 0.5f, 0.7f), 0.6f, "Star", 45f, 0.016f);
+            exitDoor = Box("ExitDoor", MapW, 0f, 32.6f, MapW + 0.4f, 2.6f, 35.4f, new Color(0.45f, 0.85f, 0.6f));
+            GameObjectUtility.SetStaticEditorFlags(exitDoor, 0);
+            Sign("EXIT", new Vector3(33.8f, 3.6f, 34f), 90f, 0.09f, new Color(0.2f, 0.7f, 0.35f));
+            Box("HeightChart", 33.6f, 0f, 37f, 33.95f, 2.2f, 38.2f, new Color(1f, 0.95f, 0.8f));
+            for (int i = 1; i <= 10; i++)
+                Deco(PrimitiveType.Cube, zoneGeo, new Vector3(33.58f, i * 0.2f, 37.6f), new Vector3(0.01f, 0.02f, i % 5 == 0 ? 0.9f : 0.45f), Mat(new Color(0.9f, 0.4f, 0.45f), 0.2f), "Tick");
+            Sign("101CM", new Vector3(33.55f, 2.05f, 37.6f), 90f, 0.04f, new Color(0.9f, 0.3f, 0.4f));
+            var cols = new[] { new Color(1f, 0.4f, 0.5f), new Color(1f, 0.8f, 0.3f), new Color(0.4f, 0.8f, 1f), new Color(0.6f, 0.9f, 0.5f) };
+            var spots = new[] { new Vector3(28.8f, 0, 28.1f), new Vector3(33.2f, 0, 28.1f), new Vector3(28.8f, 0, 39.9f), new Vector3(33.2f, 0, 39.9f) };
+            for (int i = 0; i < spots.Length; i++)
+            {
+                Deco(PrimitiveType.Cylinder, zoneGeo, spots[i] + Vector3.up * 1.2f, new Vector3(0.03f, 1.2f, 0.03f), Mat(CMetal, 0.4f), "String");
+                Deco(PrimitiveType.Sphere, zoneGeo, spots[i] + Vector3.up * 2.7f, new Vector3(0.7f, 0.85f, 0.7f), Mat(cols[i], 0.8f, 0.3f), "Balloon");
+            }
+            var warm = new GameObject("GoalLight").AddComponent<Light>();
+            warm.transform.SetParent(zoneGeo, false);
+            warm.transform.position = new Vector3(31f, 4f, 34f);
+            warm.type = LightType.Point;
+            warm.range = 10f;
+            warm.intensity = 2.5f;
+            warm.color = new Color(1f, 0.85f, 0.7f);
+            finalPoint = Point("FINAL", PointKind.FinalJelly, 32.3f, 37.6f);
+            exitPoint = Point("EXIT", PointKind.Exit, 33.4f, 34f, 90f);
+            Label("Z6 골 홀: 위험 없음 · 100cm가 되면 마지막 1cm가 나타남", new Vector3(31f, 3f, 30.5f), new Color(0.9f, 0.3f, 0.5f), 0.04f);
+        }
+    }
+}

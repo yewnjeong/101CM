@@ -1,0 +1,135 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace CM101
+{
+    /// <summary>
+    /// 굴러오는 과일 무더기(레벨 문서 2장). 판매대가 흔들리고 레인이 깜빡이며 1초 예고한 뒤,
+    /// 빠른 과일 여러 개가 레인을 따라 굴러간다. 연결된 동료에 맞으면 그 지점부터 덩어리로 떨어진다.
+    /// 선두에 맞으면 옆으로 밀려난다. 일정 간격으로 반복한다.
+    /// </summary>
+    public class RollerVolley : MonoBehaviour
+    {
+        public Vector3 from;
+        public Vector3 to;
+        public float laneWidth = 1.2f;
+        public float interval = 7f;
+        public float warnTime = 1f;
+        public int perVolley = 5;
+        public float speed = 4.2f;
+        public float radius = 0.22f;
+        public Transform standVisual;
+        public Renderer laneMarker;
+        /// <summary>2026-10-07: 평소에는 레인 표시를 숨기고, 예고(깜빡임) 동안만 보인다.</summary>
+        public bool laneOnlyWhenWarning = true;
+
+        float timer;
+        bool warning;
+        Vector3 standHome;
+        readonly List<Rigidbody> live = new List<Rigidbody>();
+        MaterialPropertyBlock mpb;
+        Color laneColor;
+
+        void Start()
+        {
+            timer = interval * Random.Range(0.3f, 0.8f);
+            if (standVisual) standHome = standVisual.position;
+            mpb = new MaterialPropertyBlock();
+            if (laneMarker) laneColor = laneMarker.sharedMaterial.GetColor("_BaseColor");
+            if (laneMarker && laneOnlyWhenWarning) laneMarker.enabled = false;
+        }
+
+        void Update()
+        {
+            if (!GameManager.IsPlaying) return;
+            timer -= Time.deltaTime;
+            if (!warning && timer <= warnTime)
+            {
+                warning = true;
+                if (laneMarker && laneOnlyWhenWarning) laneMarker.enabled = true;
+            }
+            if (warning)
+            {
+                if (standVisual) standVisual.position = standHome + Random.insideUnitSphere * 0.04f;
+                if (laneMarker)
+                {
+                    laneMarker.GetPropertyBlock(mpb);
+                    Color c = ((int)(Time.time * 10f)) % 2 == 0 ? Color.white : laneColor;
+                    mpb.SetColor("_BaseColor", c);
+                    mpb.SetColor("_EmissionColor", c);
+                    laneMarker.SetPropertyBlock(mpb);
+                }
+            }
+            if (timer <= 0f)
+            {
+                warning = false;
+                if (standVisual) standVisual.position = standHome;
+                if (laneMarker) { mpb.SetColor("_BaseColor", laneColor); mpb.SetColor("_EmissionColor", laneColor); laneMarker.SetPropertyBlock(mpb); }
+                if (laneMarker && laneOnlyWhenWarning) laneMarker.enabled = false;
+                Fire();
+                timer = interval;
+            }
+            for (int i = live.Count - 1; i >= 0; i--)
+            {
+                var rb = live[i];
+                if (!rb) { live.RemoveAt(i); continue; }
+                Vector3 d = to - from;
+                float along = Vector3.Dot(rb.position - from, d.normalized);
+                if (along > d.magnitude + 0.5f || rb.position.y < -2f || Time.time - rb.GetComponent<VolleyFruit>().born > 8f)
+                {
+                    Destroy(rb.gameObject);
+                    live.RemoveAt(i);
+                }
+            }
+        }
+
+        void Fire()
+        {
+            Vector3 dir = (to - from);
+            dir.y = 0f;
+            dir.Normalize();
+            Vector3 side = Vector3.Cross(Vector3.up, dir);
+            for (int i = 0; i < perVolley; i++)
+            {
+                var go = new GameObject("VolleyFruit");
+                go.layer = Layers.Hazard;
+                go.transform.SetParent(transform, true);
+                go.transform.position = from + side * Random.Range(-0.4f, 0.4f) * laneWidth - dir * (i * 0.55f) + Vector3.up * (radius + 0.05f);
+                var col = go.AddComponent<SphereCollider>();
+                col.radius = radius;
+                var rb = go.AddComponent<Rigidbody>();
+                rb.mass = 0.5f;
+                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                rb.linearVelocity = dir * speed * Random.Range(0.9f, 1.1f);
+                Color c = new[] { new Color(1f, 0.3f, 0.3f), new Color(1f, 0.6f, 0.15f), new Color(0.6f, 0.9f, 0.3f) }[i % 3];
+                ProtoFactory.Prim(PrimitiveType.Sphere, go.transform, Vector3.zero, Vector3.one * radius * 2f, ProtoFactory.Mat(c, 0.7f), "Fruit");
+                var vf = go.AddComponent<VolleyFruit>();
+                vf.born = Time.time;
+                live.Add(rb);
+            }
+        }
+
+        void OnDrawGizmos()
+        {
+            Gizmos.color = new Color(1f, 0.5f, 0.2f, 0.9f);
+            Gizmos.DrawLine(from + Vector3.up * 0.1f, to + Vector3.up * 0.1f);
+        }
+    }
+
+    public class VolleyFruit : MonoBehaviour
+    {
+        public float born;
+        public float minImpactSpeed = 2.2f;
+
+        void OnCollisionEnter(Collision c)
+        {
+            if (c.relativeVelocity.magnitude < minImpactSpeed) return;
+            Vector3 away = c.transform.position - transform.position;
+            away.y = 0f;
+            var ld = c.collider.GetComponent<LeaderController>();
+            if (ld) { ld.Knock(away.normalized * 3f); return; }
+            var u = c.collider.GetComponent<JellyUnit>();
+            if (u && JellyChain.I) JellyChain.I.ReportHit(u, LossType.Chunk, transform.position);
+        }
+    }
+}

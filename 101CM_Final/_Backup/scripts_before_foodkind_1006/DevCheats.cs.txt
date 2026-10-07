@@ -1,0 +1,158 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using CM101.Level;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace CM101
+{
+    /// <summary>
+    /// 개발자 치트 (에디터와 Development Build에서만 붙는다. 배포 빌드에는 없다).
+    /// 직접 끝까지 확인할 수 있게 해 준다.
+    ///   F1 무적 켜기/끄기 — 청소기·직원·떨어지는 상품·굴러오는 과일·얼음이 선두와 동료에게 아무 영향이 없다
+    ///   F2 음식 하나 먹기 — 가장 가까운 남은 음식을 바로 먹는다(총량 90cm 규칙 유지)
+    ///   F3 다음 구역으로 이동 — 다음 구역 안내판 앞으로 순간이동(마지막은 골 홀), 동료도 뒤에 함께 선다
+    ///   F4 100cm로 골 홀 — 남은 음식을 모두 먹어 100cm를 만들고 골 홀로 이동한다(최종 젤리 → 엔딩 확인용)
+    /// </summary>
+    public class DevCheats : MonoBehaviour
+    {
+        public static bool GodMode { get; private set; }
+
+        GameManager gm;
+        bool busy;
+        GUIStyle style;
+
+        void Awake() { gm = GetComponent<GameManager>(); }
+
+        void Update()
+        {
+            var kb = Keyboard.current;
+            if (kb == null || !gm || busy || gm.State != GameState.Playing) return;
+            if (kb.f1Key.wasPressedThisFrame)
+            {
+                GodMode = !GodMode;
+                GameManager.Notify(GodMode ? "[개발자] 무적 켜짐 — 위험에 영향받지 않아요" : "[개발자] 무적 꺼짐", MsgKind.Gold, 2f);
+            }
+            else if (kb.f2Key.wasPressedThisFrame) EatNearest();
+            else if (kb.f3Key.wasPressedThisFrame) StartCoroutine(GoNextZone());
+            else if (kb.f4Key.wasPressedThisFrame) StartCoroutine(GoGoal());
+        }
+
+        void OnDestroy() { GodMode = false; }
+
+        // ------------------------------------------------------------------ F2
+
+        bool Eat(FoodItem f)
+        {
+            var chain = gm.chain;
+            if (!f || f.Consumed || !chain.CanGrow(f.Length)) return false;
+            FoodType t = f.Type;
+            int variant = f.Variant, len = f.Length;
+            if (!f.TryConsume()) return false;
+            chain.AddFromFood(t, variant);
+            gm.OnFoodEaten(t, len);
+            return true;
+        }
+
+        void EatNearest()
+        {
+            Vector3 p = gm.leader.Body.position;
+            var f = FoodItem.All.Where(x => x && !x.Consumed && x.isTutorial == gm.TutorialActive && gm.chain.CanGrow(x.Length))
+                                .OrderBy(x => (x.transform.position - p).sqrMagnitude).FirstOrDefault();
+            if (!f) { GameManager.Notify("[개발자] 먹을 수 있는 음식이 없어요", MsgKind.Warn, 2f); return; }
+            Eat(f);
+        }
+
+        // ------------------------------------------------------------------ F3 / F4
+
+        /// <summary>구역 순서대로 이동 지점: 안내판 ZS1~5 앞, 마지막은 골 홀.</summary>
+        List<(Vector3 pos, Vector3 fwd)> Stops()
+        {
+            var list = new List<(Vector3, Vector3)>();
+            foreach (var pm in FindObjectsByType<PointMarker>(FindObjectsSortMode.None).Where(m => m.kind == PointKind.ZoneSign).OrderBy(m => m.zone))
+            {
+                Vector3 fwd = pm.transform.forward; fwd.y = 0f; fwd.Normalize();
+                list.Add((pm.transform.position + fwd * 1.0f, fwd));
+            }
+            list.Add((GoalStandPos(), Vector3.right));
+            return list;
+        }
+
+        Vector3 GoalStandPos()
+        {
+            // 골 게이트를 막 지난 자리(최종 젤리 앞). 동료는 게이트 서쪽으로 줄지어 선다.
+            if (gm.finalSpawnPoint)
+            {
+                Vector3 f = gm.finalSpawnPoint.position;
+                return new Vector3(f.x - 2.3f, 0f, f.z - 3.6f);
+            }
+            return gm.leader.Body.position;
+        }
+
+        void Teleport(Vector3 ground, Vector3 fwd)
+        {
+            var ld = gm.leader;
+            ld.Body.position = ground + Vector3.up * (ld.Radius + 0.02f);
+            ld.Body.linearVelocity = Vector3.zero;
+            if (ld.cam) ld.cam.yaw = Mathf.Atan2(fwd.x, fwd.z) * Mathf.Rad2Deg;
+            Physics.SyncTransforms();
+        }
+
+        IEnumerator GoNextZone()
+        {
+            busy = true;
+            var stops = Stops();
+            int cur = gm.CurrentZone ? (int)gm.CurrentZone.zone : 0; // Z0 → 0번 안내판(ZS1) ...
+            int idx = Mathf.Clamp(cur, 0, stops.Count - 1);
+            var s = stops[idx];
+            Teleport(s.pos, s.fwd);
+            yield return new WaitForFixedUpdate();
+            yield return null; // 튜토리얼 종료·구역 갱신이 먼저 처리되게
+            gm.chain.ResetTrail(-s.fwd);
+            GameManager.Notify($"[개발자] {(gm.CurrentZone ? gm.CurrentZone.displayName : "다음 구역")}(으)로 이동", MsgKind.Gold, 2f);
+            busy = false;
+        }
+
+        IEnumerator GoGoal()
+        {
+            busy = true;
+            if (gm.TutorialActive)
+            {
+                // 창고를 벗어나야 튜토리얼이 끝나고 본게임 음식이 계산된다
+                var s1 = Stops()[0];
+                Teleport(s1.pos, s1.fwd);
+                yield return new WaitForFixedUpdate();
+                yield return null;
+                yield return null;
+            }
+            var chain = gm.chain;
+            foreach (var u in chain.Detached.ToArray()) if (u) chain.RevertToFood(u);
+            yield return null;
+            foreach (var f in FoodItem.All.ToArray())
+                if (f && !f.Consumed && !f.isTutorial && chain.CurrentLength < JellyChain.Goal) Eat(f);
+            Teleport(GoalStandPos(), Vector3.right);
+            yield return new WaitForFixedUpdate();
+            yield return null;
+            chain.ResetTrail(Vector3.left);
+            GameManager.Notify($"[개발자] {chain.CurrentLength}cm로 골 홀에 왔어요. 최종 젤리 앞에서 Space!", MsgKind.Gold, 4f);
+            busy = false;
+        }
+
+        // ------------------------------------------------------------------ 화면 표시
+
+        void OnGUI()
+        {
+            if (!gm) return;
+            if (style == null) style = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.UpperRight };
+            string t = $"개발자 F1 무적 {(GodMode ? "ON" : "off")} · F2 음식 먹기 · F3 다음 구역 · F4 100cm로 골";
+            var r = new Rect(Screen.width - 620, 8, 600, 24);
+            var prev = GUI.color;
+            GUI.color = new Color(0, 0, 0, 0.6f);
+            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), t, style);
+            GUI.color = GodMode ? new Color(1f, 0.85f, 0.3f) : new Color(1, 1, 1, 0.75f);
+            GUI.Label(r, t, style);
+            GUI.color = prev;
+        }
+    }
+}

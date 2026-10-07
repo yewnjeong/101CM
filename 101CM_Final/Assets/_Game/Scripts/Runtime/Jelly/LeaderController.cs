@@ -1,0 +1,683 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace CM101
+{
+    /// <summary>
+    /// 선두 곰 젤리.
+    /// - WASD 카메라 기준 걷기. 길이가 늘수록 느려진다. 마우스 시점(커서 잠금). 달리기 없음 (2026-09-29).
+    /// - Shift 점프: 매대(1.0u) 한 단을 오른다. 매대 위 음식은 점프해서 먹는다. 동료는 선두가 지나간 궤적(높이 포함)을 그대로 따라간다.
+    /// - Space = 먹기/동료 붙이기(1회 입력당 1개). 선두 발밑 링 안에 들어온 것만 먹을 수 있다. 1~4 기분 표현.
+    ///   (2026-09-29: 왼쪽 클릭 먹기는 조준점이 없어 어려워 Space로 되돌림)
+    /// - 바닥 효과: 쏟은 음료(미끄럼), 녹은 아이스크림(끈적), 얼음(2초 빙결).
+    /// - 청소기 입구에 닿으면 붙잡힌다(실패 없음). 이동 키로 계속 버둥거리면(연타 아님, 누르고 있기) 게이지가 차서
+    ///   누른 방향으로 빠져나오고 2초 동안 다시 끌리지 않는다. 가만히 있으면 게이지가 줄어든다.
+    /// - 자기 몸 충돌: Jelly↔Lead 물리 충돌은 꺼 두고(올라타기 방지) 수평 방향으로만 막고 튕긴다.
+    /// </summary>
+    [RequireComponent(typeof(Rigidbody), typeof(SphereCollider))]
+    public class LeaderController : MonoBehaviour
+    {
+        [Header("Body")]
+        public float bodySize = 0.6f; // 1타일 = 1유닛 ≈ 몸길이 1.7배
+
+        [Header("Walk")]
+        public float walkSpeed = 2.6f;              // 10cm일 때 걷기
+        public float slowestWalkFactor = 0.7f;      // 100cm일 때 걷기 배율
+        public float acceleration = 18f;
+
+        [Header("Jump (Shift)")]
+        public float jumpHeight = 1.15f;            // 몸 중심이 오르는 높이. 1.0u 매대 한 단을 오른다
+        public float fallGravityMultiplier = 1.7f;  // 내려올 때 더 빨리 떨어져 둥실거리지 않게
+        public float coyoteTime = 0.12f;
+        public float jumpBuffer = 0.15f;
+
+        [Header("Eat (Space)")]
+        [Tooltip("링 가장자리 밖으로 이만큼까지 겹치면 먹을 수 있다")] public float eatRingMargin = 0.15f;
+        public float eatMaxHeightDiff = 0.6f;
+
+        [Header("Knock (굴러온 물건에 밀림)")]
+        public float knockDecel = 6f;
+
+        [Header("Vacuum (청소기 입구에 붙잡힘)")]
+        [Tooltip("이동 키를 계속 누르고 있을 때 빠져나오기까지 걸리는 시간(초)")] public float escapeHoldTime = 1.8f;
+        [Tooltip("손을 떼면 게이지가 초당 줄어드는 양")] public float escapeDecay = 0.4f;
+        public float escapeImmunity = 2f;
+
+        [Header("Self collision")]
+        public float bounceBodyLengths = 0.2f;
+        public float trapReleaseTime = 2f;
+
+        [Header("Stomp (직원에게 밟힘)")]
+        public float stompStun = 1.3f;          // 납작해져 움직일 수 없는 시간
+        public float stompInvulnerable = 3f;    // 연속으로 밟히지 않는 보호 시간
+
+        public OrbitCamera cam;
+
+        public Rigidbody Body { get; private set; }
+        public SphereCollider Col { get; private set; }
+        public JellyEmote Emote { get; private set; }
+        public float Radius => bodySize * 0.5f;
+
+        /// <summary>길이에 따른 감속 배율 (10cm → 1, 100cm → slowestWalkFactor).</summary>
+        public float LengthSpeedFactor
+        {
+            get
+            {
+                int len = JellyChain.I ? JellyChain.I.CurrentLength : JellyChain.LeaderLength;
+                float t = Mathf.InverseLerp(JellyChain.LeaderLength, JellyChain.Goal, len);
+                return Mathf.Lerp(1f, slowestWalkFactor, t);
+            }
+        }
+
+        public float CurrentWalkSpeed => walkSpeed * LengthSpeedFactor;
+        /// <summary>추종 젤리가 따라잡을 수 있는 최고 속도.</summary>
+        public float CatchUpSpeed => walkSpeed * 3.2f;
+        /// <summary>발밑 링 반지름 (ProtoFactory.BuildBear: 지름 = 몸 크기 × 1.25).</summary>
+        public float RingRadius => bodySize * 0.625f;
+
+        public bool IsStunned => Time.time < stunUntil;
+        public bool IsFrozen => Time.time < frozenUntil;
+        public bool IsGrounded { get; private set; }
+        float frozenUntil = -1f;
+        float freezeSafeUntil = -1f;
+        float lastGroundedTime = -10f;
+        float jumpPressedTime = -10f;
+        GameObject iceShell;
+        float lastSurfaceMsg = -10f;
+        SurfaceKind lastSurface = SurfaceKind.None;
+
+        /// <summary>얼음 근처: 2초 동안 얼어 움직일 수 없다. 풀린 뒤 3초는 다시 얼지 않는다.</summary>
+        public bool TryFreeze(float duration)
+        {
+            if (Time.time < freezeSafeUntil || IsFrozen || DevCheats.GodMode) return false;
+            frozenUntil = Time.time + duration;
+            stunUntil = Mathf.Max(stunUntil, frozenUntil);
+            freezeSafeUntil = frozenUntil + 3f;
+            moveVel = Vector3.zero;
+            if (!iceShell)
+            {
+                iceShell = ProtoFactory.Prim(PrimitiveType.Sphere, transform, Vector3.zero, Vector3.one * bodySize * 1.35f,
+                    ProtoFactory.Mat(new Color(0.65f, 0.9f, 1f), 0.95f, 0.6f), "IceShell");
+            }
+            iceShell.SetActive(true);
+            GameManager.Notify("꽁꽁! 얼음 근처에서 얼어 버렸어요", MsgKind.Warn, 2f);
+            return true;
+        }
+
+        /// <summary>자동 테스트용 입력. 값이 있으면 키보드 대신 쓴다 (x = 오른쪽, y = 앞).</summary>
+        [System.NonSerialized] public Vector2? SimulatedMove;
+
+        /// <summary>점프 입력 (Shift와 같음). 자동 테스트·다른 입력 장치용.</summary>
+        public void RequestJump() { jumpPressedTime = Time.time; }
+        /// <summary>먹기 입력 (Space와 같음). 자동 테스트용.</summary>
+        public void RequestEat() { if (GameManager.IsPlaying && !IsStunned) { FindCandidates(); TryEat(); } }
+
+        Vector3 knockVel;
+        float knockPopUntil;
+        /// <summary>굴러온 물건 등에 부딪혀 밀려난다(손실 없음). 밀리는 동안은 조작이 잘 먹히지 않고 살짝 튀어 오른다.</summary>
+        public void Knock(Vector3 horizontal)
+        {
+            if (CaughtBy || DevCheats.GodMode) return;
+            horizontal.y = 0f;
+            if (horizontal.sqrMagnitude > knockVel.sqrMagnitude) knockVel = horizontal;
+            else knockVel += horizontal * 0.3f;
+            moveVel *= 0.3f;
+            knockPopUntil = Time.time + 0.05f;
+        }
+        public bool IsKnocked => knockVel.sqrMagnitude > 1f;
+
+        /// <summary>지금 붙잡고 있는 청소기 (없으면 null).</summary>
+        public VacuumCleaner CaughtBy { get; private set; }
+        /// <summary>탈출 게이지 0~1.</summary>
+        public float EscapeProgress { get; private set; }
+        float vacuumImmuneUntil = -1f;
+        bool caughtTipShown;
+        public bool CanBeSucked => CaughtBy == null && Time.time >= vacuumImmuneUntil && !DevCheats.GodMode;
+
+        public void CatchByVacuum(VacuumCleaner v)
+        {
+            if (!v || !CanBeSucked) return;
+            CaughtBy = v;
+            EscapeProgress = 0f;
+            moveVel = Vector3.zero;
+            knockVel = Vector3.zero;
+            jumpPressedTime = -10f;
+            GameManager.Notify(caughtTipShown ? "청소기에 붙잡혔어요! 이동 키로 버둥거리세요" : "청소기 입구에 붙잡혔어요! 이동 키를 계속 누르면 힘겹게 빠져나와요", MsgKind.Warn, caughtTipShown ? 2f : 4f);
+            caughtTipShown = true;
+        }
+
+        /// <summary>붙잡힌 동안 선두가 버둥거리는 방향(이동 입력). 모습이 그쪽으로 기울고 빠져나올 때 그쪽으로 튀어 나간다.</summary>
+        public Vector3 StruggleDir { get; private set; }
+
+        void EscapeVacuum(Vector3 wantDir)
+        {
+            var v = CaughtBy;
+            CaughtBy = null;
+            EscapeProgress = 0f;
+            StruggleDir = Vector3.zero;
+            vacuumImmuneUntil = Time.time + escapeImmunity;
+            if (!v) return;
+            // 누른 방향으로 빠져나오되, 흡입구 쪽(청소기 뒤쪽)으로는 가지 않게 청소기 앞·옆으로 보정한다
+            Vector3 fwd = v.transform.forward; fwd.y = 0f; fwd.Normalize();
+            Vector3 dir = wantDir; dir.y = 0f;
+            if (dir.sqrMagnitude < 0.01f) dir = v.transform.right;
+            dir.Normalize();
+            if (Vector3.Dot(dir, fwd) < 0f) dir = (dir - fwd * Vector3.Dot(dir, fwd)).normalized; // 뒤로 가는 성분 제거
+            if (dir.sqrMagnitude < 0.01f) dir = v.transform.right;
+            Knock((dir * 0.85f + fwd * 0.15f).normalized * 6.5f);
+            GameManager.Notify("휴! 청소기에서 빠져나왔어요", MsgKind.Good, 1.8f);
+        }
+        public bool CanBeStomped => Time.time >= stompSafeUntil && !DevCheats.GodMode;
+        float stunUntil = -1f;
+        float stompSafeUntil = -1f;
+
+        /// <summary>직원에게 밟힘: 실패 대신 납작해지고 잠시 움직일 수 없다. 동료 분리는 JellyChain이 처리.</summary>
+        public void OnStomped()
+        {
+            stunUntil = Time.time + stompStun;
+            stompSafeUntil = Time.time + stompInvulnerable;
+            moveVel = Vector3.zero;
+            if (Emote) Emote.PlayFlatten(stompStun + 0.15f);
+        }
+
+        public FoodItem CandidateFood { get; private set; }
+        public FinalJelly CandidateFinal { get; private set; }
+        /// <summary>Space로 다시 붙일 수 있는 가장 가까운 분리 동료.</summary>
+        public JellyUnit CandidateJelly { get; private set; }
+        JellyUnit highlightedJelly;
+
+        [System.NonSerialized] public Vector3? AutoMoveTarget;
+        [System.NonSerialized] public Vector3 ExternalVelocity;
+
+        Vector3 inputDir;
+        /// <summary>이번 프레임 이동 입력(카메라 기준으로 돌린 월드 방향, 길이 0~1). 동료 비켜서기 판정에 쓴다.</summary>
+        public Vector3 MoveInput => inputDir;
+        Vector3 moveVel;
+        Vector3 bounceVel;
+        float bounceCooldown;
+        float trapTimer;
+        float trapSampleTimer;
+        Transform visual;
+        Vector3 lastDir = Vector3.forward;
+        Vector3 startPos;
+        FinalJelly highlightedFinal;
+        const float BounceDecel = 14f;
+
+        readonly Dictionary<Collider, float> ignoreUntil = new Dictionary<Collider, float>();
+        readonly List<Collider> ignoreExpired = new List<Collider>();
+        readonly Collider[] buf = new Collider[48];
+
+        void Awake()
+        {
+            Body = GetComponent<Rigidbody>();
+            Col = GetComponent<SphereCollider>();
+            Col.radius = Radius;
+            Col.sharedMaterial = ProtoFactory.JellyPhysics;
+            Body.freezeRotation = true;
+            Body.interpolation = RigidbodyInterpolation.Interpolate;
+            Body.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            visual = transform.Find("Visual");
+            Emote = GetComponent<JellyEmote>();
+            if (!Emote) Emote = gameObject.AddComponent<JellyEmote>();
+            startPos = transform.position;
+            lastDir = transform.forward;
+            // 올라타기 방지: 선두와 젤리는 물리적으로 부딪히지 않게 하고 코드로 수평 충돌만 처리한다.
+            Physics.IgnoreLayerCollision(Layers.Jelly, Layers.Lead, true);
+        }
+
+        // ------------------------------------------------------------------ 입력
+
+        void Update()
+        {
+            inputDir = Vector3.zero;
+
+            if (!GameManager.IsPlaying)
+            {
+                ClearCandidates();
+                UpdateVisual();
+                return;
+            }
+
+            var kb = Keyboard.current;
+            if (SimulatedMove.HasValue)
+            {
+                Vector2 m = Vector2.ClampMagnitude(SimulatedMove.Value, 1f);
+                float yaw = cam ? cam.Yaw : 0f;
+                inputDir = Quaternion.Euler(0f, yaw, 0f) * new Vector3(m.x, 0f, m.y);
+            }
+            else if (kb != null)
+            {
+                Vector2 m = Vector2.zero;
+                if (kb.wKey.isPressed) m.y += 1f;
+                if (kb.sKey.isPressed) m.y -= 1f;
+                if (kb.dKey.isPressed) m.x += 1f;
+                if (kb.aKey.isPressed) m.x -= 1f;
+                float yaw = cam ? cam.Yaw : 0f;
+                inputDir = Quaternion.Euler(0f, yaw, 0f) * new Vector3(m.x, 0f, m.y);
+                if (inputDir.sqrMagnitude > 1f) inputDir.Normalize();
+            }
+            bool shiftDown = kb != null && (kb.leftShiftKey.wasPressedThisFrame || kb.rightShiftKey.wasPressedThisFrame);
+            if (iceShell && iceShell.activeSelf && !IsFrozen) iceShell.SetActive(false);
+
+            // 청소기 입구에 붙잡힘: 이동 키를 계속 누르고 있으면(버둥거림) 게이지가 차서 빠져나온다. 연타할 필요 없음.
+            if (CaughtBy)
+            {
+                Vector3 want = inputDir;
+                inputDir = Vector3.zero;
+                if (want.sqrMagnitude > 0.01f)
+                {
+                    StruggleDir = want.normalized;
+                    EscapeProgress += Time.deltaTime / Mathf.Max(0.1f, escapeHoldTime);
+                }
+                else
+                {
+                    StruggleDir = Vector3.zero;
+                    EscapeProgress = Mathf.Max(0f, EscapeProgress - escapeDecay * Time.deltaTime);
+                }
+                if (EscapeProgress >= 1f) EscapeVacuum(want);
+                ClearCandidates();
+                UpdateVisual();
+                return;
+            }
+            if (shiftDown) jumpPressedTime = Time.time;
+
+            if (IsStunned)
+            {
+                inputDir = Vector3.zero;
+                ClearCandidates();
+                UpdateVisual();
+                return;
+            }
+
+            FindCandidates();
+            // 먹기 = Space
+            if (kb != null && kb.spaceKey.wasPressedThisFrame) TryEat();
+            if (kb != null && JellyChain.I)
+            {
+                // 기분 표현: 1 손 흔들기, 2 신나서 빙글빙글, 3 폴짝폴짝, 4 꾸벅 인사
+                if (kb.digit1Key.wasPressedThisFrame || kb.numpad1Key.wasPressedThisFrame) JellyChain.I.PlayEmote(EmoteType.Wave);
+                else if (kb.digit2Key.wasPressedThisFrame || kb.numpad2Key.wasPressedThisFrame) JellyChain.I.PlayEmote(EmoteType.Spin);
+                else if (kb.digit3Key.wasPressedThisFrame || kb.numpad3Key.wasPressedThisFrame) JellyChain.I.PlayEmote(EmoteType.Hop);
+                else if (kb.digit4Key.wasPressedThisFrame || kb.numpad4Key.wasPressedThisFrame) JellyChain.I.PlayEmote(EmoteType.Bow);
+            }
+            UpdateVisual();
+        }
+
+        void ClearCandidates()
+        {
+            CandidateFood = null;
+            CandidateFinal = null;
+            CandidateJelly = null;
+            SetJellyHighlight(null);
+            FoodItem.SetHighlighted(null);
+            if (highlightedFinal) highlightedFinal.SetHighlighted(false);
+            highlightedFinal = null;
+        }
+
+        /// <summary>수평 거리와 높이 차 (링 판정용).</summary>
+        static void FlatDistance(Vector3 a, Vector3 b, out float flat, out float dy)
+        {
+            Vector3 d = b - a;
+            dy = Mathf.Abs(d.y);
+            d.y = 0f;
+            flat = d.magnitude;
+        }
+
+        /// <summary>
+        /// 먹기 후보: 선두 발밑 링 안에 들어온 가장 가까운 것 하나 (벽/선반에 가려지면 제외).
+        /// 음식은 중심이 링 반지름 + eatRingMargin 안, 분리 동료는 몸 가장자리가 그 안에 들어와야 한다. 높이 차는 eatMaxHeightDiff까지.
+        /// </summary>
+        void FindCandidates()
+        {
+            CandidateFood = null;
+            CandidateFinal = null;
+            float ring = RingRadius + eatRingMargin;
+            Vector3 c = Body.position;
+            // 음식 기준점은 바닥에서 0.25 위, 선두 중심은 바닥에서 Radius 위
+            Vector3 feet = c + Vector3.down * Radius;
+            int n = Physics.OverlapSphereNonAlloc(c, ring + 1f, buf, Layers.FoodMask, QueryTriggerInteraction.Collide);
+            float bestF = float.MaxValue, bestJ = float.MaxValue;
+            for (int i = 0; i < n; i++)
+            {
+                var col = buf[i];
+                var f = col.GetComponent<FoodItem>();
+                var fj = f ? null : col.GetComponent<FinalJelly>();
+                if (!f && !fj) continue;
+                Vector3 p = col.transform.position;
+                FlatDistance(feet + Vector3.up * 0.25f, p, out float d, out float dy);
+                float limit = fj ? ring + 0.3f : ring; // 최종 젤리는 몸이 커서 조금 더 여유
+                if (d > limit || dy > eatMaxHeightDiff + (fj ? 0.3f : 0f)) continue;
+                if (Physics.Linecast(c, p, Layers.EnvMask, QueryTriggerInteraction.Ignore)) continue;
+                if (f && !f.Consumed && d < bestF) { bestF = d; CandidateFood = f; }
+                else if (fj && d < bestJ) { bestJ = d; CandidateFinal = fj; }
+            }
+            if (CandidateFood && CandidateFinal)
+            {
+                if (bestF <= bestJ) CandidateFinal = null;
+                else CandidateFood = null;
+            }
+
+            // 떨어진 동료: 닿기만 해서는 붙지 않고 Space로 다시 붙인다
+            CandidateJelly = null;
+            float bestU = float.MaxValue;
+            int m = Physics.OverlapSphereNonAlloc(c, ring + 1f, buf, 1 << Layers.Jelly, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < m; i++)
+            {
+                var u = buf[i].GetComponent<JellyUnit>();
+                if (!u || u.State != JellyState.Detached || Time.time < u.RecoverableAt) continue;
+                Vector3 p = u.Body.position;
+                FlatDistance(feet, p + Vector3.down * u.Radius, out float d, out float dy);
+                d -= u.Radius;
+                if (d > ring || dy > eatMaxHeightDiff || d >= bestU) continue;
+                if (Physics.Linecast(c, p, Layers.EnvMask, QueryTriggerInteraction.Ignore)) continue;
+                bestU = d;
+                CandidateJelly = u;
+            }
+            if (CandidateJelly)
+            {
+                // 음식과 겹치면 더 가까운 쪽 하나만
+                float other = Mathf.Min(CandidateFood ? bestF : float.MaxValue, CandidateFinal ? bestJ : float.MaxValue);
+                if (other < bestU) CandidateJelly = null;
+                else { CandidateFood = null; CandidateFinal = null; }
+            }
+            SetJellyHighlight(CandidateJelly);
+
+            FoodItem.SetHighlighted(CandidateFood);
+            if (highlightedFinal != CandidateFinal)
+            {
+                if (highlightedFinal) highlightedFinal.SetHighlighted(false);
+                highlightedFinal = CandidateFinal;
+                if (highlightedFinal) highlightedFinal.SetHighlighted(true);
+            }
+        }
+
+        void SetJellyHighlight(JellyUnit u)
+        {
+            if (highlightedJelly == u) return;
+            if (highlightedJelly) highlightedJelly.SetHighlighted(false);
+            highlightedJelly = u;
+            if (u) u.SetHighlighted(true); // 한 마리씩 붙이므로 그 한 마리만 표시
+        }
+
+        static void SetGroupHighlight(JellyUnit u, bool on)
+        {
+            if (!u) return;
+            if (u.Chunk != null) { foreach (var m in u.Chunk.Members) if (m) m.SetHighlighted(on); }
+            else u.SetHighlighted(on);
+        }
+
+        void TryEat()
+        {
+            if (CandidateJelly)
+            {
+                var u = CandidateJelly;
+                SetJellyHighlight(null);
+                JellyChain.I.TryRecover(u);
+                CandidateJelly = null;
+                return;
+            }
+            if (CandidateFinal)
+            {
+                GameManager.I.TryEatFinal(CandidateFinal);
+                return;
+            }
+            var f = CandidateFood;
+            if (!f) return;
+            var chain = JellyChain.I;
+            int len = f.Length;
+            if (!chain.CanGrow(len))
+            {
+                GameManager.Notify($"{len}cm 공간이 필요해요 (남은 공간 {JellyChain.Goal - chain.CurrentLength}cm)", MsgKind.Warn);
+                return;
+            }
+            FoodType t = f.Type;
+            FoodKind kind = f.Kind;
+            int variant = f.Variant;
+            if (!f.TryConsume()) return;
+            chain.AddFromFood(t, variant, kind, len);
+            GameManager.I.OnFoodEaten(t, len, kind);
+            CandidateFood = null;
+        }
+
+        // ------------------------------------------------------------------ 이동
+
+        void FixedUpdate()
+        {
+            float dt = Time.fixedDeltaTime;
+            ExpireIgnores();
+
+            if (CaughtBy)
+            {
+                if (!CaughtBy.isActiveAndEnabled) CaughtBy = null;
+                else
+                {
+                    // 청소기 입구 바로 앞에 붙어서 함께 끌려다닌다
+                    // 버둥거리는 방향으로 조금씩 끌려 나왔다가 다시 빨려 들어가는 느낌 (게이지만큼 입구에서 멀어진다)
+                    Vector3 tug = StruggleDir * (0.12f + 0.3f * EscapeProgress) * (0.6f + 0.4f * Mathf.Sin(Time.time * 18f));
+                    Vector3 hold = CaughtBy.MouthWorld + CaughtBy.transform.forward * (Radius + 0.05f) + tug;
+                    Vector3 to = hold - Body.position;
+                    to.y = 0f;
+                    Vector3 cv = Body.linearVelocity;
+                    Vector3 hv = Vector3.ClampMagnitude(to * 12f, 6f);
+                    Body.linearVelocity = new Vector3(hv.x, Mathf.Min(cv.y, 0f), hv.z);
+                    moveVel = Vector3.zero;
+                    ExternalVelocity = Vector3.zero;
+                    return;
+                }
+            }
+
+            IsGrounded = Physics.SphereCast(Body.position + Vector3.up * 0.05f, Radius * 0.85f, Vector3.down, out _, Radius * 0.15f + 0.12f,
+                Layers.EnvMask | Layers.HazardMask, QueryTriggerInteraction.Ignore);
+            if (IsGrounded) lastGroundedTime = Time.time;
+
+            // 바닥 효과 (쏟은 음료·녹은 아이스크림)
+            SurfaceZone.Sample(Body.position, IsGrounded, out float speedMul, out float accelMul, out float jumpMul, out SurfaceKind surf);
+            if (surf != lastSurface)
+            {
+                if (surf != SurfaceKind.None && Time.time - lastSurfaceMsg > 4f)
+                {
+                    lastSurfaceMsg = Time.time;
+                    GameManager.Notify(surf == SurfaceKind.Slippery ? "미끌! 쏟아진 음료 위예요" : "끈적! 녹은 아이스크림에 발이 붙어요", MsgKind.Warn, 1.8f);
+                }
+                lastSurface = surf;
+            }
+
+            Vector3 desired;
+            if (AutoMoveTarget.HasValue)
+            {
+                Vector3 to = AutoMoveTarget.Value - Body.position;
+                to.y = 0f;
+                desired = to.magnitude > 0.2f ? to.normalized * walkSpeed : Vector3.zero;
+                if (desired.sqrMagnitude > 0.01f) lastDir = desired.normalized;
+            }
+            else if (GameManager.IsPlaying && !IsStunned)
+            {
+                desired = inputDir * CurrentWalkSpeed * speedMul;
+            }
+            else desired = Vector3.zero;
+
+            // 자기 몸 충돌: 진행 방향의 연결 젤리를 통과하지 못하고 살짝 튕긴다(수평만)
+            bool blockedBySelf = false;
+            JellyUnit blocker = null;
+            if (desired.sqrMagnitude > 0.01f && !AutoMoveTarget.HasValue)
+            {
+                Vector3 dir = desired.normalized;
+                float dist = 0.08f + desired.magnitude * dt * 2f;
+                var hits = Physics.SphereCastAll(Body.position, Radius * 0.92f, dir, dist, 1 << Layers.Jelly, QueryTriggerInteraction.Ignore);
+                foreach (var h in hits)
+                {
+                    if (ignoreUntil.ContainsKey(h.collider)) continue;
+                    var u = h.collider.GetComponent<JellyUnit>();
+                    if (!u || u.State != JellyState.Connected) continue;
+                    // 바로 뒤 동료 쪽으로 돌아서 걸으면 튕기지 않고 동료가 옆으로 돌아 뒤로 비켜선다 (2026-10-07)
+                    if (JellyChain.I && JellyChain.I.TryYield(u, dir)) continue;
+
+                    Vector3 nrm = Body.position - u.Body.position;
+                    nrm.y = 0f;
+                    if (nrm.sqrMagnitude < 1e-4f) nrm = -dir;
+                    nrm.Normalize();
+
+                    float into = Vector3.Dot(desired, -nrm);
+                    if (into > 0f) desired += nrm * into;
+                    blockedBySelf = true;
+                    blocker = u;
+
+                    if (bounceCooldown <= 0f)
+                    {
+                        float d = bounceBodyLengths * bodySize;
+                        bounceVel = nrm * Mathf.Sqrt(2f * BounceDecel * d);
+                        bounceCooldown = 0.35f;
+                        u.Nudge(-nrm * 0.8f);
+                    }
+                }
+            }
+
+            bounceCooldown -= dt;
+            bounceVel = Vector3.MoveTowards(bounceVel, Vector3.zero, BounceDecel * dt);
+            // 밀려나는 동안은 조작이 잘 먹히지 않는다
+            float knockCtl = IsKnocked ? 0.25f : 1f;
+            moveVel = Vector3.MoveTowards(moveVel, desired, acceleration * accelMul * knockCtl * dt);
+            knockVel = Vector3.MoveTowards(knockVel, Vector3.zero, knockDecel * dt);
+
+            Vector3 v = Body.linearVelocity;
+            float vy = v.y;
+            // 점프: 입력 버퍼 + 코요테 타임
+            bool canAct = GameManager.IsPlaying && !IsStunned && !AutoMoveTarget.HasValue;
+            if (canAct && Time.time - jumpPressedTime <= jumpBuffer && Time.time - lastGroundedTime <= coyoteTime && vy < 2f)
+            {
+                vy = Mathf.Sqrt(2f * -Physics.gravity.y * jumpHeight * jumpMul);
+                jumpPressedTime = -10f;
+                lastGroundedTime = -10f;
+                if (JellyChain.I) JellyChain.I.NotifyLeaderJump(vy); // 동료가 차례로 따라 뛴다
+            }
+            if (Time.time < knockPopUntil && IsGrounded && vy < 1.6f) vy = 1.6f; // 부딪히면 살짝 튀어 오른다
+            if (!IsGrounded && vy < 0f) vy += Physics.gravity.y * (fallGravityMultiplier - 1f) * dt;
+            Vector3 final = moveVel + bounceVel + knockVel + ExternalVelocity;
+            Body.linearVelocity = new Vector3(final.x, vy, final.z);
+            ExternalVelocity = Vector3.zero;
+
+            SeparateFromBody();
+
+            // 자기 몸 갇힘 해제
+            if (blockedBySelf && inputDir.sqrMagnitude > 0.1f)
+            {
+                trapSampleTimer -= dt;
+                if (trapSampleTimer <= 0f)
+                {
+                    trapSampleTimer = 0.25f;
+                    trapTimer = IsEnclosed() ? trapTimer + 0.25f : 0f;
+                }
+                if (trapTimer >= trapReleaseTime && blocker)
+                {
+                    ReleaseBlocker(blocker, inputDir);
+                    trapTimer = 0f;
+                }
+            }
+            else if (!blockedBySelf)
+            {
+                trapTimer = Mathf.Max(0f, trapTimer - dt);
+            }
+
+            // 분리 젤리 회수는 닿는 것만으로 일어나지 않는다: 링 안에서 Space (TryEat → CandidateJelly)
+
+            // 물리 오류 복구
+            if (Body.position.y < -4f)
+            {
+                Body.position = startPos + Vector3.up * 0.5f;
+                Body.linearVelocity = Vector3.zero;
+                moveVel = Vector3.zero;
+                GameManager.Notify("안전한 위치로 돌아왔어요", MsgKind.Info);
+            }
+        }
+
+        /// <summary>
+        /// 물리 충돌 대신 수평 방향으로만 연결 젤리를 밀어낸다. 높이 차가 커도(경사로 등) 서로 겹치지 않게 하되,
+        /// 위아래로 밀어 올리는 힘은 절대 만들지 않는다 → 올라타기 없음.
+        /// </summary>
+        void SeparateFromBody()
+        {
+            int n = Physics.OverlapSphereNonAlloc(Body.position, Radius + 0.35f, buf, 1 << Layers.Jelly, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var u = buf[i].GetComponent<JellyUnit>();
+                if (!u || u.State != JellyState.Connected || ignoreUntil.ContainsKey(u.Col)) continue;
+                if (JellyChain.I && JellyChain.I.IsYielding(u)) continue; // 비켜서는 중에는 순간 밀어내기를 하지 않는다(끊겨 보임)
+                Vector3 d = u.Body.position - Body.position;
+                if (Mathf.Abs(d.y) > Radius + u.Radius) continue;
+                d.y = 0f;
+                float minD = (Radius + u.Radius) * 0.98f;
+                float dist = d.magnitude;
+                if (dist >= minD) continue;
+                Vector3 dir = dist > 1e-4f ? d / dist : -lastDir;
+                float pen = minD - dist;
+                // 젤리를 밀어내고, 선두는 조금만 밀린다
+                u.Body.position += dir * pen * 0.7f;
+                Body.position -= dir * pen * 0.3f;
+                u.Nudge(dir * 0.6f);
+            }
+        }
+
+        bool IsEnclosed()
+        {
+            int mask = (1 << Layers.Jelly) | Layers.EnvMask | Layers.HazardMask;
+            bool anySelf = false;
+            for (int k = 0; k < 8; k++)
+            {
+                Vector3 dir = Quaternion.Euler(0f, k * 45f, 0f) * Vector3.forward;
+                var hits = Physics.SphereCastAll(Body.position, Radius * 0.85f, dir, 0.45f, mask, QueryTriggerInteraction.Ignore);
+                bool blocked = false;
+                foreach (var h in hits)
+                {
+                    if (h.collider == Col) continue;
+                    var u = h.collider.GetComponent<JellyUnit>();
+                    if (u && u.State != JellyState.Connected) continue;
+                    if (u) anySelf = true;
+                    blocked = true;
+                    break;
+                }
+                if (!blocked) return false;
+            }
+            return anySelf;
+        }
+
+        void ReleaseBlocker(JellyUnit u, Vector3 wantDir)
+        {
+            ignoreUntil[u.Col] = Time.time + 1.2f;
+            Vector3 side = Vector3.Cross(Vector3.up, wantDir.normalized);
+            u.Nudge(side * 2.5f);
+            GameManager.Notify("동료가 옆으로 비켜 길을 열었어요", MsgKind.Info, 1.5f);
+        }
+
+        void ExpireIgnores()
+        {
+            if (ignoreUntil.Count == 0) return;
+            ignoreExpired.Clear();
+            foreach (var kv in ignoreUntil)
+                if (!kv.Key || Time.time >= kv.Value) ignoreExpired.Add(kv.Key);
+            foreach (var c in ignoreExpired) ignoreUntil.Remove(c);
+        }
+
+        // ------------------------------------------------------------------ 시각
+
+        void UpdateVisual()
+        {
+            if (!visual) return;
+            if (inputDir.sqrMagnitude > 0.01f) lastDir = inputDir.normalized;
+            visual.rotation = Quaternion.Slerp(visual.rotation, Quaternion.LookRotation(lastDir, Vector3.up), 1f - Mathf.Exp(-12f * Time.deltaTime));
+            Vector3 v = Body ? Body.linearVelocity : Vector3.zero;
+            v.y = 0f;
+            float spd = v.magnitude;
+            bool moving = spd > 0.2f;
+            float bob = Mathf.Sin(Time.time * (moving ? 11f : 3f)) * (moving ? 0.05f : 0.025f);
+            if (CaughtBy)
+            {
+                // 붙잡혀 버둥거림: 이동 키를 누르면 더 크게, 누른 쪽을 바라보며 늘어난다
+                bool pushing = StruggleDir.sqrMagnitude > 0.01f;
+                bob = Mathf.Sin(Time.time * (pushing ? 30f : 14f)) * (pushing ? 0.12f : 0.05f);
+                if (pushing) visual.rotation = Quaternion.Slerp(visual.rotation, Quaternion.LookRotation(StruggleDir, Vector3.up), 1f - Mathf.Exp(-14f * Time.deltaTime));
+            }
+            visual.localScale = new Vector3(1f + bob * 0.5f, 1f - bob, 1f + bob * 0.5f);
+        }
+    }
+}
