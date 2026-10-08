@@ -156,6 +156,10 @@ d.rectangle([bx,by,bx+127,by+63],fill=(124,164,212))      # bars (right half)
 d.rectangle([bx,by,bx+31,by+63],fill=(166,198,234))       # rim highlight (left quarter)
 d.rectangle([bx+32,by,bx+63,by+63],fill=(102,142,194))    # shadowed bars
 reg("basket_slots",bx,by,128,64)
+# --- pastel swatches (mart palette) in the basket region's unused columns; basket only samples x=16/48/96
+for (n,c),(ox,oy) in zip([('pst_pink', (236, 168, 178)), ('pst_mint', (160, 210, 184)), ('pst_peach', (242, 186, 140)), ('pst_lavender', (190, 172, 224)), ('pst_coral', (234, 146, 132)), ('pst_sage', (180, 200, 146)), ('pst_rose', (222, 150, 176)), ('pst_lemon', (240, 214, 128))],[(64, 0), (64, 32), (76, 0), (76, 32), (108, 0), (108, 32), (118, 0), (118, 32)]):
+    w=10 if ox>=108 else 12
+    d.rectangle([bx+ox,by+oy,bx+ox+w-1,by+oy+31],fill=c); reg(n,bx+ox,by+oy,w,32)
 
 img.save(OUT+r"\T_Kit_Fresh.png")
 json.dump(regions,open(OUT+r"\regions.json","w"))

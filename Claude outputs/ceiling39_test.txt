@@ -1,0 +1,4 @@
+floor: camY=1.79 dist=2.00 pitch=28.0
+shelf2.0 leaderY=2.30 camY=3.66 dist=2.00 pitch=23.8
+shelf jump mid: camY=3.69 dist=0.81 pitch=-8.2
+jump from shelf: startY=2.30 apex center=3.40 head top=3.70 (ceiling 3.90, expected center rise 1.15)

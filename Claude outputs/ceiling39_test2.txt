@@ -1,0 +1,4 @@
+floor before: camDist=2.31 camY=1.79
+floor: apex center 1.40 (rise 1.10) headTop 1.70 | camDist min 2.15 camY max 2.84
+shelf2.0 before: camDist=2.28 camY=3.66
+shelf2.0: apex center 3.40 (rise 1.10) headTop 3.70 | camDist min 1.86 camY max 3.68
