@@ -1,0 +1,501 @@
+fileFormatVersion: 2
+guid: 7862fd1fd2e7f974986d9c3cf196c6f4
+ModelImporter:
+  serializedVersion: 24600
+  internalIDToNameTable: []
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_FountainWater
+    second: {fileID: 2100000, guid: 357d3b99e35c6a144a29a645b5ef8dc1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_GateText_EXIT
+    second: {fileID: 2100000, guid: d4657166337dc074d992966474910089, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_GateText_START
+    second: {fileID: 2100000, guid: 342fd9a210e7bc944955712215e8ef18, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Grass
+    second: {fileID: 2100000, guid: 7ea9a9e44eba9014e8fa9be66900bca2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_IslandSide
+    second: {fileID: 2100000, guid: 07f6de66dd133184c991b3c242859640, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Panel_BreadIcon
+    second: {fileID: 2100000, guid: 8241a62c893b6854699e350534ba0bf4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Rim
+    second: {fileID: 2100000, guid: 4a0d6623baff03f48a7d6ad05cccc7c4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_ShopLight_Bread_Front
+    second: {fileID: 2100000, guid: ce79bc9f2f5ef51429608c7062b66109, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_ShopLight_Bread_Side1
+    second: {fileID: 2100000, guid: 84ed8aca98011904d9af12c442b9ec61, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_ShopLight_Bread_Side2
+    second: {fileID: 2100000, guid: 9a48094d97627e742a8b699cd70ca999, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_ShopLight_Fruit
+    second: {fileID: 2100000, guid: 9d88ea0df10a5b549b3516afb43479ee, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_ShopLight_Snack
+    second: {fileID: 2100000, guid: 89fd4542ea162bb44aa39efa93735078, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_SignText_Bread
+    second: {fileID: 2100000, guid: 8ca6da54fbf3d354d991ac31d6532009, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_SignText_Fruit
+    second: {fileID: 2100000, guid: 75b0d0592c2341a4d81b582e8afe8641, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_SignText_Snack
+    second: {fileID: 2100000, guid: f0fbb5d46ba1ea347bcd6287ddf1cb33, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_StarNightLight.001
+    second: {fileID: 2100000, guid: b7afe69f12cc36349abb44d86382dda8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Material.006
+    second: {fileID: 2100000, guid: 8e75297654bbdab4ab3477bca002fa24, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Material.007
+    second: {fileID: 2100000, guid: a953270f209ad25498f916282641f72d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Apple Sign
+    second: {fileID: 2100000, guid: c59b8495816bb9f4d86b0cf394c84fa4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Apple_F
+    second: {fileID: 2100000, guid: 261d25fbe66304242bf28de20ca9bb38, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Awning
+    second: {fileID: 2100000, guid: 0e9302e3420397d49b2e0c8411c1c074, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Awning_B
+    second: {fileID: 2100000, guid: 356b25bea2b8473428154d6cc3a7a410, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Awning_F
+    second: {fileID: 2100000, guid: c61129938c645274fa5d0a7850038c62, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_B_Flower
+    second: {fileID: 2100000, guid: 2a3fcbdbc4a939044bdfc79fca854216, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_B_Flower1
+    second: {fileID: 2100000, guid: 397d7ebbb1001ed4daf3608a2e461e41, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Baguette
+    second: {fileID: 2100000, guid: 3791ebf0bfea23e45b4b77a763a0cdde, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Bakery.001
+    second: {fileID: 2100000, guid: d558796d8f2816649b6c3983e64f138c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Bench_A
+    second: {fileID: 2100000, guid: 372f4b77f1ada284cb6334c5028c8b0b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Blue Box
+    second: {fileID: 2100000, guid: cac5fdc972608474fae3f5f3753e4cbc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Bread
+    second: {fileID: 2100000, guid: 8099c72e30329c84f830dc0eca55b031, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Bread Headboard
+    second: {fileID: 2100000, guid: 814c3effca8de3e4eb8e2b5eefb5ecd3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Bread.001
+    second: {fileID: 2100000, guid: 5ca3cf843a7359e42b6a3d32d85a5fd4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Bridge
+    second: {fileID: 2100000, guid: 3431d4eea31d02443be8736af22bfe25, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Bridge.001
+    second: {fileID: 2100000, guid: cfc116ab2c958cf4ca6de6d68e1f084b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Brown Box
+    second: {fileID: 2100000, guid: e60ea246f6c467844b98b0e2da919720, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Candy
+    second: {fileID: 2100000, guid: fa7db1368878736429f2314da8e14fd6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Candy Cane
+    second: {fileID: 2100000, guid: 11b34bd87fc1fca44b57574e81388481, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Candy Sign
+    second: {fileID: 2100000, guid: d353f1ee721659546901e98dfd002ab8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Chocolate Cookie
+    second: {fileID: 2100000, guid: 3fc4cf894103ae748b04990f2d6fc501, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Concentric
+    second: {fileID: 2100000, guid: fe0fd127b81c47549a14f8c3a9842b3f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Croissant
+    second: {fileID: 2100000, guid: 2a59e2016894edf49b2914328acbffa0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Door_F
+    second: {fileID: 2100000, guid: 5217a13a49b57f043b44465351f0793b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Door_F.002
+    second: {fileID: 2100000, guid: fca757fe4b0fe714cba0401dbbcd9050, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Exit Wooden
+    second: {fileID: 2100000, guid: dfa3daf94a6e1644a817075c3412b25d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_F_Frame
+    second: {fileID: 2100000, guid: 831c6001c417feb47b610919f87ab98a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Fence
+    second: {fileID: 2100000, guid: 1a36110888126af409db3ad483869676, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Fountain
+    second: {fileID: 2100000, guid: ebc201ecfd10acd4b949b291e3c0d315, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Garden
+    second: {fileID: 2100000, guid: 6aea724b8e84d7e4da31be6426dbc5b2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Green Box
+    second: {fileID: 2100000, guid: b5be1ec06c6a88645813edd6a3d61eec, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Jar
+    second: {fileID: 2100000, guid: 5b757983a9a73dd438fb2c1c16534a23, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Lavender Flower_N
+    second: {fileID: 2100000, guid: 0566105ba97da8940ae417b5f9bb184a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Lemon
+    second: {fileID: 2100000, guid: eb5b14c0044049844afb9100384c6c84, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Lollipop
+    second: {fileID: 2100000, guid: b46b4cc5c5a611b4fb81b1ce638ce7a0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Mail Box
+    second: {fileID: 2100000, guid: 199fc88a9ebae534f8701db541f19af0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Mart_B
+    second: {fileID: 2100000, guid: 8af71b8219e38c64fb6dc869104eb623, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Mart_C
+    second: {fileID: 2100000, guid: 5d60035d3a609ee498a875c60c39ff08, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Pear_F
+    second: {fileID: 2100000, guid: cf984d48a5244424483a5c0c50e9cf9b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Pink Flower
+    second: {fileID: 2100000, guid: 865982be21cd6ba41ac34de178e5523d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Pink Flower_N
+    second: {fileID: 2100000, guid: 402dbe71d65335b46abe94ed21d29fc4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Pudding
+    second: {fileID: 2100000, guid: 20970615bc46b114f93428c92d09e2e8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Purple Flower
+    second: {fileID: 2100000, guid: 066fc64178dbf674b8c97a67f7e9890c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Red Box
+    second: {fileID: 2100000, guid: ff56576e37983c441918e54cc7ca5cea, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Shopping Basket
+    second: {fileID: 2100000, guid: 552bdd2773478144bbf4b16694439ede, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Square Pad
+    second: {fileID: 2100000, guid: a4dcef0c3c73ee34daf8a1ee6b6637b6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Star
+    second: {fileID: 2100000, guid: 80242fca23524974a8b47f9a078d1119, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Star Box
+    second: {fileID: 2100000, guid: cf62713f3a8c97441b4132d4d812b901, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Star.001
+    second: {fileID: 2100000, guid: b830924fd9a1eb24d953f10fb338a0fa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Star1
+    second: {fileID: 2100000, guid: 12cb1c81ff905ce49ab6d37c30351d74, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Star1.001
+    second: {fileID: 2100000, guid: 9ddae2ec7374cf846ab3906634a6968d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Star1.002
+    second: {fileID: 2100000, guid: 3103fed74bbdefc4b9214879fad99358, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Start Wooden
+    second: {fileID: 2100000, guid: 6c5095b8bc1bb004f9de43f1cd08c1fe, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Toast
+    second: {fileID: 2100000, guid: c80a8a6c27f83324f90a0345b6f94210, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Tree
+    second: {fileID: 2100000, guid: fefa50bce27d03548be887c8cc8c24c0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Tree_F
+    second: {fileID: 2100000, guid: 6603074016a8f0e4e93d2e7c14299765, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Wooden Box
+    second: {fileID: 2100000, guid: 704ffe465c8e4e84c9a813505e402dd3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: URPLab_Baked_Yellow Box
+    second: {fileID: 2100000, guid: 8e46ab7157f0d5847aa2338c76347622, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: material_0.001
+    second: {fileID: 2100000, guid: 4ed98e0398a4f374583ef017d55359e2, type: 2}
+  materials:
+    materialImportMode: 2
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 1
+    searchTexturesGlobally: 0
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    removeConstantScaleCurves: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 0
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    useSRGBMaterialColor: 1
+    sortHierarchyByName: 1
+    preBakeConvexCollisionMesh: 0
+    preBakeTriangleCollisionMesh: 0
+    importPhysicalCameras: 1
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 0
+    importLights: 0
+    nodeNameCollisionStrategy: 1
+    fileIdsGeneration: 2
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    keepQuads: 0
+    weldVertices: 1
+    bakeAxisConversion: 0
+    preserveHierarchy: 0
+    skinWeightsMode: 0
+    maxBonesPerVertex: 4
+    minBoneWeight: 0.001
+    optimizeBones: 1
+    generateMeshLods: 0
+    meshLodGenerationFlags: 0
+    maximumMeshLod: -1
+    importUVs: -1
+    importVertexColors: 1
+    meshOptimizationFlags: -1
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 1
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+    strictVertexDataChecks: 0
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+    calculateBlendshapeNormalsDeltaFromImportedNormals: 0
+  referencedClips: []
+  importAnimation: 0
+  humanDescription:
+    serializedVersion: 3
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    globalScale: 1
+    rootMotionBoneName: 
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  autoGenerateAvatarMappingIfUnspecified: 1
+  animationType: 2
+  humanoidOversampling: 1
+  avatarSetup: 0
+  addHumanoidExtraRootOnlyWhenUsingAvatar: 1
+  importBlendShapeDeformPercent: 1
+  remapMaterialsIfMaterialImportModeIsNone: 0
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

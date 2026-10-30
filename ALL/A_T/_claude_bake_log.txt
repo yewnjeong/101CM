@@ -1,0 +1,311 @@
+QUEUE START
+SAVED
+Pink Flower_N: generate {'RUNNING_MODAL'}
+Pink Flower_N: retopo Completed: 4,256 triangles
+Pink Flower_N: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Pink Flower_N: bake {'FINISHED'} BaseColor: range 0.0000-0.9569, std 0.2190 | Normal: range 0.0000-1.0000, std 0.2386 | AO: range 0.0000-1.0000, std 0.2166 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.0985
+SAVED
+Pink Flower: generate {'RUNNING_MODAL'}
+Pink Flower: retopo Completed: 6,906 triangles
+Pink Flower: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Pink Flower: bake {'FINISHED'} BaseColor: range 0.0000-0.9647, std 0.1995 | Normal: range 0.0039-1.0000, std 0.2388 | AO: range 0.0000-1.0000, std 0.1917 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.0404
+SAVED
+Lavender Flower_N: generate {'RUNNING_MODAL'}
+Lavender Flower_N: retopo Completed: 4,238 triangles
+Lavender Flower_N: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+QUEUE1B START (restart after Blender closed)
+Lavender Flower_N: generate {'RUNNING_MODAL'} (2048)
+Lavender Flower_N: retopo Completed: 4,252 triangles
+Lavender Flower_N: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Lavender Flower_N: bake {'FINISHED'} BaseColor: range 0.0000-0.9294, std 0.2681 | Normal: range 0.0000-1.0000, std 0.2380 | AO: range 0.0000-1.0000, std 0.3666 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.2123
+SAVED
+Garden: generate {'RUNNING_MODAL'} (2048)
+Garden: retopo Completed: 7,308 triangles
+Garden: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Garden: bake {'FINISHED'} BaseColor: range 0.0000-0.9647, std 0.2754 | Normal: range 0.0000-1.0000, std 0.2430 | AO: range 0.0000-1.0000, std 0.3949 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.2105
+SAVED
+SAVED
+ALL_A DONE -> creating All_C
+All_C saved: C:\Users\ME\Downloads\Cat-Mart\ALL\All_C.blend
+QUEUE2 START ['Blue Box', 'Bridge', 'Brown Box', 'Concentric', 'Fence', 'Green Box', 'Magic Broom', 'Mint Bag', 'Red Box', 'Shopping Basket', 'Shopping Cart', 'Square Pad', 'Star', 'Star Frame', 'Star Frame1', 'Star Night Light', 'Star1', 'Tree', 'Wooden Box', 'Yellow Box']
+Blue Box: import (1/20)
+Blue Box: high 50000 faces, mats ['material_0']
+Blue Box: generate {'RUNNING_MODAL'}
+Blue Box: retopo Completed: 9,748 triangles
+Blue Box: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Blue Box: bake {'FINISHED'} BaseColor: range 0.0000-0.5961, std 0.1797 | Normal: range 0.0000-1.0000, std 0.2444 | AO: range 0.0000-1.0000, std 0.3585 | Metallic: range 0.0000-1.0000, std 0.3793 | Roughness: range 0.0000-1.0000, std 0.3793
+SAVED
+Bridge: import (2/20)
+Bridge: high 1005570 faces, mats ['material_0.001']
+Bridge: generate {'RUNNING_MODAL'}
+Bridge: retopo Completed: 63,733 triangles
+Bridge: uv {'FINISHED'} URPLab_Low_UV: SMART, overlap faces 0
+Bridge: FAILED Error: BASE_COLOR validation failed: image is empty black
+
+SAVED
+Brown Box: import (3/20)
+Brown Box: high 50000 faces, mats ['material_0.002']
+Brown Box: generate {'RUNNING_MODAL'}
+Brown Box: retopo Completed: 9,702 triangles
+Brown Box: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Brown Box: bake {'FINISHED'} BaseColor: range 0.0000-0.6275, std 0.1809 | Normal: range 0.0000-1.0000, std 0.2442 | AO: range 0.0000-1.0000, std 0.3562 | Metallic: range 0.0000-1.0000, std 0.3907 | Roughness: range 0.0000-1.0000, std 0.3907
+SAVED
+Concentric: import (4/20)
+Concentric: high 983888 faces, mats ['material_0.003']
+Concentric: generate {'RUNNING_MODAL'}
+Concentric: FAILED retopo Failed: Native process failed with exit code 3221226356.                      ->|plop|<-     quad_cover.cpp:377 : MIQ iter | New LS iteration | Try enforce mutiplicity equality with snap size  0
+SAVED
+Fence: import (5/20)
+Fence: high 993914 faces, mats ['material_0.004']
+Fence: generate {'RUNNING_MODAL'}
+Fence: retopo Completed: 37,394 triangles
+Fence: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Fence: bake {'FINISHED'} BaseColor: range 0.0000-0.9608, std 0.2421 | Normal: range 0.0000-1.0000, std 0.2880 | AO: range 0.0000-1.0000, std 0.2829 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1435
+SAVED
+Green Box: import (6/20)
+Green Box: high 50000 faces, mats ['material_0.005']
+Green Box: generate {'RUNNING_MODAL'}
+Green Box: retopo Completed: 9,681 triangles
+Green Box: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Green Box: bake {'FINISHED'} BaseColor: range 0.0000-0.4196, std 0.1108 | Normal: range 0.0000-1.0000, std 0.2447 | AO: range 0.0000-1.0000, std 0.3295 | Metallic: range 0.0000-1.0000, std 0.3816 | Roughness: range 0.0000-1.0000, std 0.3816
+SAVED
+Magic Broom: import (7/20)
+Magic Broom: high 500000 faces, mats ['material_0.006']
+Magic Broom: generate {'RUNNING_MODAL'}
+Magic Broom: retopo Completed: 28,135 triangles
+Magic Broom: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Magic Broom: bake {'FINISHED'} BaseColor: range 0.0000-0.9647, std 0.3036 | Normal: range 0.0000-1.0000, std 0.2843 | AO: range 0.0000-1.0000, std 0.3234 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1902
+SAVED
+Mint Bag: import (8/20)
+Mint Bag: high 977756 faces, mats ['material_0.007']
+Mint Bag: generate {'RUNNING_MODAL'}
+Mint Bag: retopo Completed: 19,812 triangles
+Mint Bag: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Mint Bag: bake {'FINISHED'} BaseColor: range 0.0000-0.8549, std 0.2038 | Normal: range 0.0000-1.0000, std 0.2881 | AO: range 0.0000-1.0000, std 0.2539 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1396
+SAVED
+Red Box: import (9/20)
+Red Box: high 50000 faces, mats ['material_0.008']
+Red Box: generate {'RUNNING_MODAL'}
+Red Box: retopo Completed: 9,634 triangles
+Red Box: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Red Box: bake {'FINISHED'} BaseColor: range 0.0000-0.6353, std 0.1516 | Normal: range 0.0000-1.0000, std 0.2446 | AO: range 0.0000-1.0000, std 0.3069 | Metallic: range 0.0000-1.0000, std 0.3866 | Roughness: range 0.0000-1.0000, std 0.3866
+SAVED
+Shopping Basket: import (10/20)
+Shopping Basket: high 500000 faces, mats ['material_0.009']
+Shopping Basket: generate {'RUNNING_MODAL'}
+Shopping Basket: FAILED retopo Failed: Native process failed with exit code 3221226356. Found valid loop, size:74 | Searching boundaries done | Ignore long hole at length:74
+SAVED
+Shopping Cart: import (11/20)
+Shopping Cart: high 500000 faces, mats ['material_0.010']
+Shopping Cart: generate {'RUNNING_MODAL'}
+Shopping Cart: retopo Completed: 36,560 triangles
+Shopping Cart: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Shopping Cart: bake {'FINISHED'} BaseColor: range 0.0000-0.8824, std 0.2244 | Normal: range 0.0000-1.0000, std 0.2807 | AO: range 0.0000-1.0000, std 0.3077 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1723
+SAVED
+Square Pad: import (12/20)
+Square Pad: high 122929 faces, mats ['material_0.011']
+Square Pad: generate {'RUNNING_MODAL'}
+Square Pad: retopo Completed: 14,346 triangles
+Square Pad: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Square Pad: bake {'FINISHED'} BaseColor: range 0.0000-0.5412, std 0.1116 | Normal: range 0.0000-1.0000, std 0.2621 | AO: range 0.0000-1.0000, std 0.1165 | Metallic: range 0.0000-1.0000, std 0.4036 | Roughness: range 0.0000-1.0000, std 0.4036
+SAVED
+Star: import (13/20)
+Star: high 500000 faces, mats ['material_0.012']
+Star: generate {'RUNNING_MODAL'}
+Star: retopo Completed: 14,930 triangles
+Star: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Star: bake {'FINISHED'} BaseColor: range 0.0000-0.7412, std 0.2588 | Normal: range 0.0000-1.0000, std 0.2803 | AO: range 0.0000-1.0000, std 0.2613 | Metallic: range 0.0000-1.0000, std 0.3739 | Roughness: range 0.0000-1.0000, std 0.3739
+SAVED
+Star Frame: import (14/20)
+Star Frame: high 500000 faces, mats ['material_0.013']
+Star Frame: generate {'RUNNING_MODAL'}
+Star Frame: FAILED retopo Failed: Native process failed with exit code 3221225477.                   i M2 final size is 3263  snapped_val0 (V[i] 0 | Warning: Geogram progress lock appears abandoned (previous run may have crashed). Recovering. | Warning: Geogram progress lock appears abandoned (previous run may have crashed). Recovering.
+SAVED
+Star Frame1: import (15/20)
+Star Frame1: high 500000 faces, mats ['material_0.014']
+Star Frame1: generate {'RUNNING_MODAL'}
+Star Frame1: retopo Completed: 25,867 triangles
+Star Frame1: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Star Frame1: bake {'FINISHED'} BaseColor: range 0.0000-0.7922, std 0.2239 | Normal: range 0.0000-1.0000, std 0.2803 | AO: range 0.0000-1.0000, std 0.2936 | Metallic: range 0.0000-1.0000, std 0.3611 | Roughness: range 0.0000-1.0000, std 0.3611
+SAVED
+Star Night Light: import (16/20)
+Star Night Light: high 988380 faces, mats ['material_0.015']
+Star Night Light: generate {'RUNNING_MODAL'}
+Star Night Light: retopo Completed: 35,399 triangles
+Star Night Light: uv {'FINISHED'} URPLab_Low_UV: SMART, overlap faces 0
+Star Night Light: FAILED Error: BASE_COLOR validation failed: image is empty black
+
+SAVED
+Star1: import (17/20)
+Star1: high 500000 faces, mats ['material_0.016']
+Star1: generate {'RUNNING_MODAL'}
+Star1: retopo Completed: 14,849 triangles
+Star1: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Star1: bake {'FINISHED'} BaseColor: range 0.0000-0.7725, std 0.2409 | Normal: range 0.0000-1.0000, std 0.2796 | AO: range 0.0000-1.0000, std 0.3418 | Metallic: range 0.0000-1.0000, std 0.3809 | Roughness: range 0.0000-1.0000, std 0.3809
+SAVED
+Tree: import (18/20)
+Tree: high 500000 faces, mats ['material_0.017']
+Tree: generate {'RUNNING_MODAL'}
+Tree: retopo Completed: 15,141 triangles
+Tree: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Tree: bake {'FINISHED'} BaseColor: range 0.0000-0.8275, std 0.2184 | Normal: range 0.0000-1.0000, std 0.2877 | AO: range 0.0000-1.0000, std 0.3085 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1596
+SAVED
+Wooden Box: import (19/20)
+Wooden Box: high 122406 faces, mats ['material_0.018']
+Wooden Box: generate {'RUNNING_MODAL'}
+Wooden Box: retopo Completed: 15,938 triangles
+Wooden Box: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Wooden Box: bake {'FINISHED'} BaseColor: range 0.0000-0.5059, std 0.1243 | Normal: range 0.0000-1.0000, std 0.2843 | AO: range 0.0000-1.0000, std 0.3231 | Metallic: range 0.0000-1.0000, std 0.3928 | Roughness: range 0.0000-1.0000, std 0.3928
+SAVED
+Yellow Box: import (20/20)
+Yellow Box: high 50000 faces, mats ['material_0.019']
+Yellow Box: generate {'RUNNING_MODAL'}
+Yellow Box: retopo Completed: 9,700 triangles
+Yellow Box: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Yellow Box: bake {'FINISHED'} BaseColor: range 0.0000-0.6196, std 0.2115 | Normal: range 0.0000-1.0000, std 0.2442 | AO: range 0.0000-1.0000, std 0.3455 | Metallic: range 0.0000-1.0000, std 0.3919 | Roughness: range 0.0000-1.0000, std 0.3919
+SAVED
+QUEUE2 ALL DONE
+QUEUE3 START (retry failed items)
+Bridge: RETRY FAILED Error: BASE_COLOR validation failed: image is empty black
+
+SAVED
+Star Night Light: RETRY FAILED Error: BASE_COLOR validation failed: image is empty black
+
+SAVED
+Concentric: RETRY generate {'RUNNING_MODAL'} attempt 1 target 10000
+Concentric: RETRY retopo failed: Failed: Native process failed with exit code 3221225477. 0 |                   i 214  snapped_val    ->|plop|<-     0 (V
+Concentric: RETRY generate {'RUNNING_MODAL'} attempt 2 target 6000
+Concentric: RETRY retopo failed: Failed: Native process failed with exit code 3221226505. fixHoleWithQuads ignore score:0.936642 because conflicts with e
+Concentric: GAVE UP
+SAVED
+Shopping Basket: RETRY generate {'RUNNING_MODAL'} attempt 1 target 10000
+Shopping Basket: retopo Completed: 17,309 triangles
+Shopping Basket: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Shopping Basket: RETRY bake {'FINISHED'} BaseColor: range 0.0000-0.9569, std 0.2499 | Normal: range 0.0000-1.0000, std 0.2833 | AO: range 0.0000-1.0000, std 0.3361 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1506
+SAVED
+Star Frame: RETRY generate {'RUNNING_MODAL'} attempt 1 target 10000
+Star Frame: retopo Completed: 25,641 triangles
+Star Frame: uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Star Frame: RETRY bake {'FINISHED'} BaseColor: range 0.0000-0.7569, std 0.2561 | Normal: range 0.0000-1.0000, std 0.2803 | AO: range 0.0000-1.0000, std 0.2729 | Metallic: range 0.0000-1.0000, std 0.3621 | Roughness: range 0.0000-1.0000, std 0.3621
+SAVED
+QUEUE3 ALL DONE
+QUEUE4 START (redo All_C with Weld Shells ON)
+Red Box: W generate {'RUNNING_MODAL'} weld=True (1/20)
+Red Box: W retopo Completed: 12,440 triangles
+Red Box: W uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+QUEUE4 START (redo All_C with Weld Shells ON)
+Red Box: W generate {'RUNNING_MODAL'} weld=True (1/20)
+Red Box: W retopo Completed: 12,278 triangles
+Red Box: W uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Red Box: W bake {'FINISHED'} BaseColor: range 0.0000-0.5529, std 0.1441 | Normal: range 0.0039-1.0000, std 0.2356 | AO: range 0.0000-1.0000, std 0.2546 | Metallic: range 0.0000-1.0000, std 0.3829 | Roughness: range 0.0000-1.0000, std 0.3829
+SAVED
+Blue Box: W generate {'RUNNING_MODAL'} weld=True (2/20)
+Blue Box: W retopo Completed: 12,410 triangles
+Blue Box: W uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Blue Box: W bake {'FINISHED'} BaseColor: range 0.0000-0.6039, std 0.1110 | Normal: range 0.0039-1.0000, std 0.2357 | AO: range 0.0000-1.0000, std 0.2252 | Metallic: range 0.0000-1.0000, std 0.3634 | Roughness: range 0.0000-1.0000, std 0.3634
+SAVED
+Brown Box: W generate {'RUNNING_MODAL'} weld=True (3/20)
+QUEUE4 STOPPED (switching to All_D)
+All_D saved: C:\Users\ME\Downloads\Cat-Mart\ALL\All_D.blend
+QUEUE5 START (All_D, weld on, one high at a time)
+Red Box: D generate {'RUNNING_MODAL'} weld=True (1/20)
+Red Box: D retopo Completed: 12,210 triangles
+Red Box: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Red Box: D bake {'FINISHED'} BaseColor: range 0.0000-0.5725, std 0.1435 | Normal: range 0.0078-1.0000, std 0.2352 | AO: range 0.0000-1.0000, std 0.2543 | Metallic: range 0.0000-1.0000, std 0.3823 | Roughness: range 0.0000-1.0000, std 0.3823
+SAVED
+Blue Box: D generate {'RUNNING_MODAL'} weld=True (2/20)
+Blue Box: D retopo Completed: 12,522 triangles
+Blue Box: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Blue Box: D bake {'FINISHED'} BaseColor: range 0.0000-0.6000, std 0.1210 | Normal: range 0.0000-1.0000, std 0.2357 | AO: range 0.0000-1.0000, std 0.2396 | Metallic: range 0.0000-1.0000, std 0.3658 | Roughness: range 0.0000-1.0000, std 0.3658
+SAVED
+Brown Box: D generate {'RUNNING_MODAL'} weld=True (3/20)
+Brown Box: D retopo Completed: 12,608 triangles
+Brown Box: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Brown Box: D bake {'FINISHED'} BaseColor: range 0.0000-0.6275, std 0.1277 | Normal: range 0.0078-1.0000, std 0.2352 | AO: range 0.0000-1.0000, std 0.2475 | Metallic: range 0.0000-1.0000, std 0.3785 | Roughness: range 0.0000-1.0000, std 0.3785
+SAVED
+Green Box: D generate {'RUNNING_MODAL'} weld=True (4/20)
+Green Box: D retopo Completed: 12,334 triangles
+Green Box: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Green Box: D bake {'FINISHED'} BaseColor: range 0.0000-0.4196, std 0.1147 | Normal: range 0.0000-1.0000, std 0.2352 | AO: range 0.0000-1.0000, std 0.3453 | Metallic: range 0.0000-1.0000, std 0.3850 | Roughness: range 0.0000-1.0000, std 0.3850
+SAVED
+Yellow Box: D generate {'RUNNING_MODAL'} weld=True (5/20)
+Yellow Box: D retopo Completed: 12,748 triangles
+Yellow Box: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Yellow Box: D bake {'FINISHED'} BaseColor: range 0.0000-0.6235, std 0.1952 | Normal: range 0.0078-1.0000, std 0.2354 | AO: range 0.0000-1.0000, std 0.2510 | Metallic: range 0.0000-1.0000, std 0.3836 | Roughness: range 0.0000-1.0000, std 0.3836
+SAVED
+Wooden Box: D generate {'RUNNING_MODAL'} weld=True (6/20)
+Wooden Box: D retopo Completed: 9,432 triangles
+Wooden Box: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Wooden Box: D bake {'FINISHED'} BaseColor: range 0.0000-0.5059, std 0.1279 | Normal: range 0.0000-1.0000, std 0.2383 | AO: range 0.0000-1.0000, std 0.3332 | Metallic: range 0.0000-1.0000, std 0.3943 | Roughness: range 0.0000-1.0000, std 0.3943
+SAVED
+Square Pad: D generate {'RUNNING_MODAL'} weld=True (7/20)
+Square Pad: D retopo Completed: 12,022 triangles
+Square Pad: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Square Pad: D bake {'FINISHED'} BaseColor: range 0.0000-0.5412, std 0.1429 | Normal: range 0.3961-1.0000, std 0.2356 | AO: range 0.0000-1.0000, std 0.2594 | Metallic: range 0.0000-1.0000, std 0.4119 | Roughness: range 0.0000-1.0000, std 0.4119
+SAVED
+Star: D generate {'RUNNING_MODAL'} weld=True (8/20)
+Star: D retopo Completed: 4,214 triangles
+Star: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Star: D bake {'FINISHED'} BaseColor: range 0.0000-0.7412, std 0.2514 | Normal: range 0.1647-1.0000, std 0.2358 | AO: range 0.0000-1.0000, std 0.2331 | Metallic: range 0.0000-1.0000, std 0.3698 | Roughness: range 0.0000-1.0000, std 0.3698
+SAVED
+Star1: D generate {'RUNNING_MODAL'} weld=True (9/20)
+Star1: D retopo Completed: 4,466 triangles
+Star1: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Star1: D bake {'FINISHED'} BaseColor: range 0.0000-0.7725, std 0.1652 | Normal: range 0.1843-1.0000, std 0.2357 | AO: range 0.0000-1.0000, std 0.2244 | Metallic: range 0.0000-1.0000, std 0.3689 | Roughness: range 0.0000-1.0000, std 0.3689
+SAVED
+Star Frame: D generate {'RUNNING_MODAL'} weld=True (10/20)
+Star Frame: D retopo Completed: 17,112 triangles
+Star Frame: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Star Frame: D bake {'FINISHED'} BaseColor: range 0.0000-0.7569, std 0.2732 | Normal: range 0.0039-1.0000, std 0.2356 | AO: range 0.0000-1.0000, std 0.3665 | Metallic: range 0.0000-1.0000, std 0.3709 | Roughness: range 0.0000-1.0000, std 0.3709
+SAVED
+Star Frame1: D generate {'RUNNING_MODAL'} weld=True (11/20)
+Star Frame1: D retopo Completed: 16,118 triangles
+Star Frame1: D uv {'FINISHED'} URPLab_Low_UV: SMART, overlap faces 0
+Star Frame1: D bake {'FINISHED'} BaseColor: range 0.0000-0.7922, std 0.2987 | Normal: range 0.2000-1.0000, std 0.2351 | AO: range 0.0000-1.0000, std 0.4244 | Metallic: range 0.0000-1.0000, std 0.3148 | Roughness: range 0.0000-1.0000, std 0.3148
+SAVED
+Tree: D generate {'RUNNING_MODAL'} weld=True (12/20)
+Tree: D retopo Completed: 9,052 triangles
+Tree: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Tree: D bake {'FINISHED'} BaseColor: range 0.0000-0.8275, std 0.2088 | Normal: range 0.0000-1.0000, std 0.2395 | AO: range 0.0000-1.0000, std 0.2851 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1221
+SAVED
+Mint Bag: D generate {'RUNNING_MODAL'} weld=True (13/20)
+Mint Bag: D retopo Completed: 9,252 triangles
+Mint Bag: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Mint Bag: D bake {'FINISHED'} BaseColor: range 0.0000-0.8549, std 0.2567 | Normal: range 0.2745-1.0000, std 0.2355 | AO: range 0.0000-1.0000, std 0.3398 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.2051
+SAVED
+Magic Broom: D generate {'RUNNING_MODAL'} weld=True (14/20)
+Magic Broom: D retopo Completed: 7,768 triangles
+Magic Broom: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Magic Broom: D bake {'FINISHED'} BaseColor: range 0.0000-0.9686, std 0.2838 | Normal: range 0.0000-1.0000, std 0.2414 | AO: range 0.0000-1.0000, std 0.2944 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1613
+SAVED
+Shopping Basket: D generate {'RUNNING_MODAL'} weld=True (15/20)
+Shopping Basket: D retopo Completed: 13,592 triangles
+Shopping Basket: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Shopping Basket: D bake {'FINISHED'} BaseColor: range 0.0000-0.9333, std 0.2273 | Normal: range 0.0471-1.0000, std 0.2372 | AO: range 0.0000-1.0000, std 0.3295 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.0937
+SAVED
+Shopping Cart: D generate {'RUNNING_MODAL'} weld=True (16/20)
+Shopping Cart: D retopo Completed: 17,946 triangles
+Shopping Cart: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Shopping Cart: D bake {'FINISHED'} BaseColor: range 0.0000-0.8824, std 0.2330 | Normal: range 0.0039-1.0000, std 0.2378 | AO: range 0.0000-1.0000, std 0.3269 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1844
+SAVED
+Fence: D generate {'RUNNING_MODAL'} weld=True (17/20)
+Fence: D retopo Completed: 10,708 triangles
+Fence: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Fence: D bake {'FINISHED'} BaseColor: range 0.0000-0.9608, std 0.2603 | Normal: range 0.0275-1.0000, std 0.2362 | AO: range 0.0000-1.0000, std 0.3054 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1771
+SAVED
+Star Night Light: D generate {'RUNNING_MODAL'} weld=True (18/20)
+Star Night Light: D retopo Completed: 8,838 triangles
+Star Night Light: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Star Night Light: D bake {'FINISHED'} BaseColor: range 0.0000-0.9686, std 0.2193 | Normal: range 0.0000-1.0000, std 0.2372 | AO: range 0.0000-1.0000, std 0.2285 | Metallic: constant result; range 0.0000-0.0000, std 0.0000 | Roughness: range 0.0000-0.5529, std 0.1185
+SAVED
+Bridge: D generate {'RUNNING_MODAL'} weld=True (19/20)
+Bridge: D retopo Completed: 12,640 triangles
+Bridge: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Bridge: D bake {'FINISHED'} BaseColor: range 0.0000-0.6353, std 0.1623 | Normal: range 0.0039-1.0000, std 0.2388 | AO: range 0.0000-1.0000, std 0.2915 | Metallic: range 0.0000-1.0000, std 0.3763 | Roughness: range 0.0000-1.0000, std 0.3763
+SAVED
+Concentric: D generate {'RUNNING_MODAL'} weld=True (20/20)
+Concentric: D retopo Completed: 5,820 triangles
+Concentric: D uv {'FINISHED'} URPLab_Low_UV: SMART + safe face packing, overlap faces 0
+Concentric: D bake {'FINISHED'} BaseColor: range 0.0000-0.6471, std 0.1922 | Normal: range 0.0000-1.0000, std 0.2439 | AO: range 0.0000-1.0000, std 0.3762 | Metallic: range 0.0000-1.0000, std 0.3859 | Roughness: range 0.0000-1.0000, std 0.3859
+SAVED
+QUEUE5 ALL DONE

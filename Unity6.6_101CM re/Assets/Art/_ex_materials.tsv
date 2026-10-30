@@ -1,0 +1,79 @@
+Mart_Bread	URPLab_Baked_Awning_B	Awning_B_BaseColor.png	Awning_B_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	URPLab_Baked_Baguette	Baguette_BaseColor.png	Baguette_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	URPLab_Baked_Bakery.001	Bakery_BaseColor_001.png	Bakery_Normal_001.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	M_Panel_BreadIcon	Panel_Bread.png		0.8000	0.8000	0.8000	0	0.600	0.000
+Mart_Bread	URPLab_Baked_Bread Headboard	Bread_Headboard_BaseColor.png	Bread_Headboard_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	M_SignText_Bread			0.4500	0.2000	0.0700	0	0.550	0.000
+Mart_Bread	URPLab_Baked_Bread	Bread_BaseColor.png	Bread_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	URPLab_Baked_Bread.001	Bread_BaseColor.png	Bread_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	URPLab_Baked_Croissant	Croissant_BaseColor.png	Croissant_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	URPLab_Baked_Door_F	Door_F_BaseColor.png	Door_F_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	URPLab_Baked_F_Frame	F_Frame_BaseColor.png	F_Frame_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Bread	M_ShopLight_Bread_Front			1.0000	0.8600	0.6200	1	0.500	0.000
+Mart_Bread	M_ShopLight_Bread_Side1			1.0000	0.8600	0.6200	1	0.500	0.000
+Mart_Bread	M_ShopLight_Bread_Side2			1.0000	0.8600	0.6200	1	0.500	0.000
+Mart_Bread	URPLab_Baked_Mart_B	Mart_B_BaseColor.png	Mart_B_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	URPLab_Baked_Awning	Awning_BaseColor.png	Awning_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	URPLab_Baked_Candy Cane	Candy_Cane_BaseColor.png	Candy_Cane_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	URPLab_Baked_Candy Sign	Candy_Sign_BaseColor.png	Candy_Sign_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	M_SignText_Snack			0.2267	0.2112	0.9299	0	0.550	0.000
+Mart_Candy	URPLab_Baked_Candy	Candy_BaseColor.png	Candy_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	URPLab_Baked_Chocolate Cookie	Chocolate_Cookie_BaseColor.png	Chocolate_Cookie_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	URPLab_Baked_Jar	Jar_BaseColor.png	Jar_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	URPLab_Baked_Lollipop	Lollipop_BaseColor.png	Lollipop_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	URPLab_Baked_Mail Box	Mail_Box_BaseColor.png	Mail_Box_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	URPLab_Baked_Mart_C	Mart_C_BaseColor.png	Mart_C_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Candy	M_ShopLight_Snack			1.0000	0.8600	0.6200	1	0.500	0.000
+Mart_Candy	URPLab_Baked_Star Box	Star_Box_BaseColor.png	Star_Box_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Fruit	URPLab_Baked_Awning_F	Awning_F_BaseColor.png	Awning_F_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Fruit	URPLab_Baked_Door_F.002	Door_F_BaseColor.png	Door_F_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Fruit	M_ShopLight_Fruit			1.0000	0.8600	0.6200	1	0.500	0.000
+Mart_Fruit	material_0.001	Apple_House_H_BaseColor.png		0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Fruit	URPLab_Baked_Apple Sign	Apple_Sign_BaseColor.png	Apple_Sign_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Mart_Fruit	M_SignText_Fruit			0.8201	0.2239	0.1167	0	0.550	0.000
+Fountain	URPLab_Baked_Fountain	Fountain_BaseColor.png	Fountain_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Fountain	URPLab_Baked_Star	Star_BaseColor.png	Star_Normal.png	0.8000	0.8000	0.8000	1	0.500	0.000
+Fountain	M_FountainWater			0.4500	0.8200	0.9500	1	0.080	0.000
+PlazaFloor	URPLab_Baked_Concentric	Concentric_BaseColor.png	Concentric_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Bench	URPLab_Baked_Bench_A	Bench_A_BaseColor.png	Bench_A_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Tree_A	URPLab_Baked_Tree	Tree_BaseColor.png	Tree_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Tree_B	URPLab_Baked_Tree	Tree_BaseColor.png	Tree_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Tree_Apple	URPLab_Baked_Tree_F	Tree_F_BaseColor.png	Tree_F_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Tree_C	URPLab_Baked_Tree	Tree_BaseColor.png	Tree_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Flower_Pink	URPLab_Baked_Pink Flower	Pink_Flower_BaseColor.png	Pink_Flower_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Flower_Purple	URPLab_Baked_Purple Flower	Purple_Flower_BaseColor.png	Purple_Flower_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Flower_Blue	URPLab_Baked_B_Flower1	B_Flower1_BaseColor.png	B_Flower1_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Garden	URPLab_Baked_Garden	Garden_BaseColor.png	Garden_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Garden	URPLab_Baked_B_Flower	B_Flower_BaseColor.png	B_Flower_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Garden	URPLab_Baked_Lavender Flower_N	Lavender_Flower_N_BaseColor.png	Lavender_Flower_N_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Garden	URPLab_Baked_Pink Flower_N	Pink_Flower_N_BaseColor.png	Pink_Flower_N_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Fence	URPLab_Baked_Fence	Fence_BaseColor.png	Fence_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+StonePad	URPLab_Baked_Square Pad	Square_Pad_BaseColor.png	Square_Pad_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+StarLamp	M_StarNightLight.001	base_color.png	normal.png	1.0000	1.0000	1.0000	1	0.550	0.000
+Star	URPLab_Baked_Star	Star_BaseColor.png	Star_Normal.png	0.8000	0.8000	0.8000	1	0.500	0.000
+Star1	URPLab_Baked_Star1	Star1_BaseColor.png	Star1_Normal.png	0.8000	0.8000	0.8000	1	0.500	0.000
+Gate_Start	URPLab_Baked_Start Wooden	Start_Wooden_BaseColor.png	Start_Wooden_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Gate_Start	M_GateText_START			1.0000	0.9600	0.8500	0	0.500	0.000
+Gate_Exit	URPLab_Baked_Exit Wooden	Exit_Wooden_BaseColor.png	Exit_Wooden_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Gate_Exit	M_GateText_EXIT			1.0000	0.9600	0.8500	0	0.500	0.000
+Bridge	URPLab_Baked_Bridge	Bridge_BaseColor.png	Bridge_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Crate	URPLab_Baked_Wooden Box	Wooden_Box_BaseColor.png	Wooden_Box_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Box_Brown	URPLab_Baked_Brown Box	Brown_Box_BaseColor.png	Brown_Box_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Box_Red	URPLab_Baked_Red Box	Red_Box_BaseColor.png	Red_Box_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Box_Yellow	URPLab_Baked_Yellow Box	Yellow_Box_BaseColor.png	Yellow_Box_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Box_Blue	URPLab_Baked_Blue Box	Blue_Box_BaseColor.png	Blue_Box_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Box_Green	URPLab_Baked_Green Box	Green_Box_BaseColor.png	Green_Box_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Cart_A	URPLab_Baked_Star1.001	Star1_BaseColor.png	Star1_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Cart_A	URPLab_Baked_Shopping Cart	Shopping_Cart_BaseColor.png	Shopping_Cart_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Cart_B	URPLab_Baked_Star1.001	Star1_BaseColor.png	Star1_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Cart_B	URPLab_Baked_Shopping Cart	Shopping_Cart_BaseColor.png	Shopping_Cart_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Broom	URPLab_Baked_Magic Broom	Magic_Broom_BaseColor.png	Magic_Broom_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Basket	URPLab_Baked_Shopping Basket	Shopping_Basket_BaseColor.png	Shopping_Basket_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Island	M_IslandSide			0.8600	0.7000	0.8000	0	0.600	0.000
+Island	M_Rim			0.9800	0.8800	0.8600	0	0.500	0.000
+Island	M_Grass			0.4500	0.7200	0.3800	0	0.762	0.000
+Food_Croissant	URPLab_Baked_Croissant	Croissant_BaseColor.png	Croissant_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Food_Toast	URPLab_Baked_Toast	Toast_BaseColor.png	Toast_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Food_Apple	URPLab_Baked_Apple_F	Apple_F_BaseColor.png	Apple_F_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Food_Pear	URPLab_Baked_Pear_F	Pear_F_BaseColor.png	Pear_F_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
+Food_Lemon	URPLab_Baked_Lemon	Lemon_BaseColor.png	Lemon_Normal.png	0.8000	0.8000	0.8000	0	0.500	0.000
